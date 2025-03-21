@@ -67,7 +67,7 @@ Edu View AI system focus on eye and mouth activity to detect silent cheating. It
    ```
 3. Install dependencies:
    ```sh
-   pip install reflex
+   pip install -r requirements.txt
    ```
 3. Run the application:
    ```sh
