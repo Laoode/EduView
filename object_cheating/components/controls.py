@@ -1,100 +1,46 @@
-
 import reflex as rx
-from object_cheating.states.camera_state import CameraState
-
-def controls() -> rx.Component:
-    return rx.el.div(
-        rx.el.div(
-            # Camera toggle button
-            rx.el.button(
-                rx.cond(
-                    CameraState.camera_active,
-                    "Stop Camera",
-                    "Start Camera"
-                ),
-                on_click=CameraState.toggle_camera,
-                class_name=rx.cond(
-                    CameraState.camera_active,
-                    "bg-red-500 hover:bg-red-600",
-                    "bg-green-500 hover:bg-green-600"
-                ) + " text-white px-6 py-2 rounded-lg transition-colors duration-200 font-medium mr-4"
-            ),
-            # Face detection toggle
-            rx.el.button(
-                rx.cond(
-                    CameraState.face_detection_active,
-                    "Disable Face Detection",
-                    "Enable Face Detection"
-                ),
-                on_click=CameraState.toggle_face_detection,
-                class_name=rx.cond(
-                    CameraState.face_detection_active,
-                    "bg-purple-500 hover:bg-purple-600",
-                    "bg-blue-500 hover:bg-blue-600"
-                ) + " text-white px-6 py-2 rounded-lg transition-colors duration-200 font-medium"
-            ),
-            class_name="flex space-x-4"
+def model_navigation() -> rx.Component:
+    """Komponen navigasi model."""
+    return rx.hstack(
+        rx.icon_button(
+            rx.icon("chevron-left"),
+            variant="surface",
+            height="30px",
+            width="30px",
         ),
-        rx.cond(
-            CameraState.face_detection_active,
-            rx.el.div(
-                rx.el.div(
-                    rx.el.label(
-                        "Min Neighbors:",
-                        class_name="text-sm text-gray-600 mr-2"
-                    ),
-                    rx.el.input(
-                        type="range",
-                        min=1,
-                        max=10,
-                        value=CameraState.min_neighbors,
-                        on_change=CameraState.update_min_neighbors,
-                        class_name="w-48"
-                    ),
-                    rx.el.span(
-                        CameraState.min_neighbors,
-                        class_name="text-sm text-gray-600 ml-2"
-                    ),
-                    class_name="flex items-center mb-2"
-                ),
-                rx.el.div(
-                    rx.el.label(
-                        "Scale Factor:",
-                        class_name="text-sm text-gray-600 mr-2"
-                    ),
-                    rx.el.input(
-                        type="range",
-                        min=11,
-                        max=20,
-                        value=CameraState.scale_factor * 10,
-                        on_change=CameraState.update_scale_factor,
-                        class_name="w-48"
-                    ),
-                    rx.el.span(
-                        CameraState.scale_factor,
-                        class_name="text-sm text-gray-600 ml-2"
-                    ),
-                    class_name="flex items-center"
-                ),
-                class_name="mt-4"
-            )
-        ),
-        rx.el.div(
-            rx.el.p(
-                "FPS: ",
-                CameraState.fps,
-                class_name="text-sm text-gray-600"
+        rx.badge(
+            rx.center(
+                rx.text("Model 1"),
+                width="100%",
+                height="28px",
             ),
-            rx.cond(
-                CameraState.face_detection_active,
-                rx.el.p(
-                    "Faces Detected: ",
-                    CameraState.face_count,
-                    class_name="text-sm text-gray-600"
-                )
-            ),
-            class_name="mt-4"
+            variant="surface",  # Light gray background; adjust if needed
+            min_width="100px",
+            text_align="center",
         ),
-        class_name="p-4 bg-white rounded-lg shadow-md space-y-4"
+        rx.icon_button(
+            rx.icon("chevron-right"),
+            variant="surface",
+            height="30px",
+            width="30px",
+        ),
+        spacing="2",
+        align="center",
     )
 
+def controls() -> rx.Component:
+    return rx.hstack(
+        rx.hstack(
+            rx.text("Enable Detection", class_name="text-gray-700"),
+            rx.switch(
+                name="switch",
+                color_scheme="grass",
+                variant="surface",
+            ),
+            spacing="2",
+            align="center",# Adds spacing between text and switch
+        ),
+        model_navigation(),
+        spacing="2",
+        class_name="flex justify-between"
+    )
