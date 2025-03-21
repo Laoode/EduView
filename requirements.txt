@@ -1,0 +1,2 @@
+reflex==0.7.1
+opencv-python==4.11.0.86
