@@ -10,11 +10,43 @@ def input_panel() -> rx.Component:
             rx.el.h3("Media Controls", class_name="text-lg font-semibold mb-2 text-gray-900"),
             # First row (Image - Video)
             rx.el.div(
-                rx.button("📷 Image", class_name=button_style),
+                rx.upload(
+                    rx.button(
+                        "📷 Image",
+                        class_name=rx.cond(
+                            CameraState.current_frame != "",
+                            disabled_style,
+                            button_style
+                        ),
+                    ),
+                    multiple=False,
+                    border="none",
+                    padding="0",
+                    margin="0",
+                    id="image_upload",
+                    style={"border": "none"},
+                    disabled=CameraState.current_frame != "",
+                ),
+                rx.button(
+                    "Upload",
+                    on_click=CameraState.handle_image_upload(
+                        rx.upload_files(upload_id="image_upload")
+                    ),
+                    class_name="hidden",
+                    id="upload_button",
+                ),
+                rx.script("""
+                    document.addEventListener('change', function(e) {
+                        if (e.target && e.target.closest('#image_upload')) {
+                            setTimeout(() => {
+                                document.getElementById('upload_button').click();
+                            }, 100);
+                        }
+                    });
+                """),
                 rx.button("🎬 Video", class_name=button_style),
                 class_name="grid grid-cols-2 gap-4 w-full"
             ),
-
             # Second row (Webcam - Save)
             rx.el.div(
                 rx.button(
@@ -30,22 +62,20 @@ def input_panel() -> rx.Component:
                 rx.button("💾 Save", class_name=button_style),
                 class_name="grid grid-cols-2 gap-4 w-full mt-4"
             ),
-
             # Third row (Clear, centered)
             rx.el.div(
                 rx.button(
                     "🗑️ Clear",
                     on_click=CameraState.clear_camera,
                     class_name=rx.cond(
-                        CameraState.camera_active,
+                        CameraState.current_frame != "",
                         f"{button_style} hover:bg-[#ff922b]",
                         disabled_style
                     ),
-                    is_disabled=~CameraState.camera_active
+                    is_disabled=CameraState.current_frame == ""
                 ),
                 class_name="flex justify-center w-full mt-4"
             ),
-
             class_name="w-full p-6 bg-[#ffec99] rounded-lg shadow-md max-w-md mx-auto"
         )
     )

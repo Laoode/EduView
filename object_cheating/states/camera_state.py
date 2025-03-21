@@ -21,6 +21,9 @@ class CameraState(rx.State):
     current_frame: str = ""  # Base64 encoded image
     error_message: str = ""
     
+    # Tambahkan state untuk upload gambar
+    uploaded_image: str = ""  # Untuk menyimpan gambar yang diupload
+    
     # Face detection state
     face_detection_active: bool = False
     detection_results: List[DetectionResult] = []
@@ -43,12 +46,38 @@ class CameraState(rx.State):
             return CameraState.process_camera_feed
         else:
             self.current_frame = ""
+
+    @rx.event
+    async def handle_image_upload(self, files: list[rx.UploadFile]):
+        """Handle image upload from local computer."""
+        try:
+            if not files or len(files) == 0:
+                return
+
+            file = files[0]
+            upload_data = await file.read()
             
+            # Convert to base64 for display
+            img_base64 = base64.b64encode(upload_data).decode('utf-8')
+            
+            # Get content type from file or default to jpeg
+            content_type = file.content_type or "image/jpeg"
+            
+            # Update state
+            self.uploaded_image = f"data:{content_type};base64,{img_base64}"
+            self.current_frame = self.uploaded_image
+            # Ensure camera is not active when displaying uploaded image
+            self.camera_active = False
+            
+        except Exception as e:
+            self.error_message = f"Upload error: {str(e)}"
+
     @rx.event
     async def clear_camera(self):
         """Clear the camera state and stop the camera if it's running."""
         self.camera_active = False
         self.current_frame = ""
+        self.uploaded_image = ""
         self.detection_results = []
         self.face_count = 0
         self.error_message = ""
