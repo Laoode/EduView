@@ -45,6 +45,15 @@ class CameraState(rx.State):
             self.current_frame = ""
             
     @rx.event
+    async def clear_camera(self):
+        """Clear the camera state and stop the camera if it's running."""
+        self.camera_active = False
+        self.current_frame = ""
+        self.detection_results = []
+        self.face_count = 0
+        self.error_message = ""
+
+    @rx.event
     def toggle_face_detection(self):
         self.face_detection_active = not self.face_detection_active
         

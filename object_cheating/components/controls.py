@@ -1,4 +1,6 @@
 import reflex as rx
+from object_cheating.states.camera_state import CameraState
+
 def model_navigation() -> rx.Component:
     """Komponen navigasi model."""
     return rx.hstack(

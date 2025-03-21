@@ -1,4 +1,5 @@
 import reflex as rx
+from object_cheating.states.camera_state import CameraState
 
 def stats_panel() -> rx.Component:
     return rx.vstack(
