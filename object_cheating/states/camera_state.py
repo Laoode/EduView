@@ -24,6 +24,8 @@ class CameraState(rx.State):
     # Tambahkan state untuk upload gambar
     uploaded_image: str = ""  # Untuk menyimpan gambar yang diupload
     
+    video_playing: bool = False
+    video_path: str = ""
     # Face detection state
     face_detection_active: bool = False
     detection_results: List[DetectionResult] = []
@@ -73,9 +75,76 @@ class CameraState(rx.State):
             self.error_message = f"Upload error: {str(e)}"
 
     @rx.event
+    async def handle_video_upload(self, files: list[rx.UploadFile]):
+        """Handle video upload."""
+        try:
+            if not files or len(files) == 0:
+                return
+
+            file = files[0]
+            upload_data = await file.read()
+            
+            # Save video to temporary file
+            self.video_path = os.path.join(rx.get_upload_dir(), file.filename)
+            with open(self.video_path, "wb") as f:
+                f.write(upload_data)
+            
+            # Stop other media sources
+            self.camera_active = False
+            self.uploaded_image = ""
+            self.current_frame = ""
+            self.video_playing = True
+            return CameraState.process_video_frames
+            
+        except Exception as e:
+            self.error_message = f"Video upload error: {str(e)}"
+
+    @rx.event(background=True)
+    async def process_video_frames(self):
+        """Process and display video frames."""
+        try:
+            cap = cv2.VideoCapture(self.video_path)
+            if not cap.isOpened():
+                async with self:
+                    self.error_message = "Failed to open video file"
+                    self.video_playing = False
+                return
+
+            async with self:
+                self.processing_active = True
+                self.error_message = ""
+
+            while self.video_playing and cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                # Convert frame to base64
+                _, buffer = cv2.imencode('.jpg', frame)
+                img_base64 = base64.b64encode(buffer).decode('utf-8')
+                
+                async with self:
+                    self.current_frame = f"data:image/jpeg;base64,{img_base64}"
+                
+                await asyncio.sleep(1/30)  # ~30 fps
+
+            cap.release()
+            
+        except Exception as e:
+            async with self:
+                self.error_message = f"Video processing error: {str(e)}"
+            
+        finally:
+            async with self:
+                self.processing_active = False
+                self.video_playing = False
+                self.current_frame = ""
+
+    @rx.event
     async def clear_camera(self):
         """Clear the camera state and stop the camera if it's running."""
         self.camera_active = False
+        self.video_playing = False  # Tambahkan ini
         self.current_frame = ""
         self.uploaded_image = ""
         self.detection_results = []

@@ -44,7 +44,40 @@ def input_panel() -> rx.Component:
                         }
                     });
                 """),
-                rx.button("🎬 Video", class_name=button_style),
+                rx.upload(
+                    rx.button(
+                        "🎬 Video",
+                        class_name=rx.cond(
+                            CameraState.current_frame != "",
+                            disabled_style,
+                            button_style
+                        ),
+                    ),
+                    multiple=False,
+                    border="none",
+                    padding="0",
+                    margin="0",
+                    id="video_upload",
+                    style={"border": "none"},
+                    disabled=CameraState.current_frame != "",
+                ),
+                rx.button(
+                    "Upload",
+                    on_click=CameraState.handle_video_upload(
+                        rx.upload_files(upload_id="video_upload")
+                    ),
+                    class_name="hidden",
+                    id="upload_video_button",
+                ),
+                rx.script("""
+                    document.addEventListener('change', function(e) {
+                        if (e.target && e.target.closest('#video_upload')) {
+                            setTimeout(() => {
+                                document.getElementById('upload_video_button').click();
+                            }, 100);
+                        }
+                    });
+                """),
                 class_name="grid grid-cols-2 gap-4 w-full"
             ),
             # Second row (Webcam - Save)
