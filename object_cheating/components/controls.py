@@ -6,13 +6,14 @@ def model_navigation() -> rx.Component:
     return rx.hstack(
         rx.icon_button(
             rx.icon("chevron-left"),
+            on_click=CameraState.set_active_model((CameraState.active_model - 2) % 3 + 1),
             variant="surface",
             height="30px",
             width="30px",
         ),
         rx.badge(
             rx.center(
-                rx.text("Model 1"),
+                rx.text(f"Model {CameraState.active_model}"),
                 width="100%",
                 height="28px",
             ),
@@ -22,6 +23,7 @@ def model_navigation() -> rx.Component:
         ),
         rx.icon_button(
             rx.icon("chevron-right"),
+            on_click=CameraState.set_active_model(CameraState.active_model % 3 + 1),
             variant="surface",
             height="30px",
             width="30px",
@@ -35,7 +37,8 @@ def controls() -> rx.Component:
         rx.hstack(
             rx.text("Enable Detection", class_name="text-gray-700"),
             rx.switch(
-                name="switch",
+                is_checked=CameraState.detection_enabled,
+                on_change=CameraState.toggle_detection,
                 color_scheme="grass",
                 variant="surface",
             ),
