@@ -4,12 +4,13 @@ from object_cheating.states.camera_state import CameraState
 def model_navigation() -> rx.Component:
     """Komponen navigasi model."""
     return rx.hstack(
-        rx.icon_button(
+        rx.button(
             rx.icon("chevron-left"),
-            on_click=CameraState.set_active_model((CameraState.active_model - 2) % 2 + 1),
+            on_click=CameraState.prev_model,
             variant="surface",
             height="30px",
             width="30px",
+            is_disabled=CameraState.active_model == 1,  # Dinonaktifkan saat di Model 1
         ),
         rx.badge(
             rx.center(
@@ -17,16 +18,17 @@ def model_navigation() -> rx.Component:
                 width="100%",
                 height="28px",
             ),
-            variant="surface",  # Light gray background; adjust if needed
+            variant="surface",
             min_width="100px",
             text_align="center",
         ),
-        rx.icon_button(
+        rx.button(
             rx.icon("chevron-right"),
-            on_click=CameraState.set_active_model(CameraState.active_model % 2 + 1),
+            on_click=CameraState.next_model,
             variant="surface",
             height="30px",
             width="30px",
+            is_disabled=CameraState.active_model == 3,  # Dinonaktifkan saat di Model 3
         ),
         spacing="2",
         align="center",

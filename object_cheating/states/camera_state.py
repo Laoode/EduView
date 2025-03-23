@@ -18,7 +18,18 @@ class DetectionResult(TypedDict):
 
 class CameraState(rx.State):
     # Model state
-    active_model: int = 1
+    active_model: int = 1  # Contoh definisi state variable
+
+    @rx.event
+    def prev_model(self):
+        if self.active_model > 1:
+            self.active_model -= 1
+
+    @rx.event
+    def next_model(self):
+        if self.active_model < 3:  # Ganti 3 dengan jumlah maksimum model Anda
+            self.active_model += 1
+            
     detection_enabled: bool = False
     eye_alerts: list[str] = []
     
@@ -67,7 +78,10 @@ class CameraState(rx.State):
         
     @rx.event
     def set_active_model(self, model_num: int):
-        self.active_model = model_num
+        if 1 <= model_num <= 3:
+            self.active_model = model_num
+        else:
+            print(f"Nomor model tidak valid: {model_num}. Harus antara 1 dan 3.")
         
     
     def get_face_cascade(self) -> cv2.CascadeClassifier:
@@ -358,6 +372,7 @@ class CameraState(rx.State):
 
             # Initialize variables outside the loop
             eye_tracker = None
+            yolo_model = None
             frame_counter = 0
             local_eye_alert_counter = 0
             local_eye_frame_counter = 0
@@ -373,55 +388,50 @@ class CameraState(rx.State):
                 
                 processed_frame = frame.copy()
 
-                # Initialize eye tracker only when detection is enabled
-                if self.detection_enabled and self.active_model == 3:
-                    if eye_tracker is None:
-                        eye_tracker = EyeTracker()
-                    
-                    try:
-                        # Process frame with local variables
-                        processed_frame, alerts, local_eye_alert_counter, local_eye_frame_counter = eye_tracker.process_frame(
-                            processed_frame,
-                            local_eye_alert_counter,
-                            local_eye_frame_counter
-                        )
+                # Process detections if enabled
+                if self.detection_enabled:
+                    if self.active_model == 1:
+                        # YOLO detection
+                        if yolo_model is None:
+                            yolo_model = self.get_yolo_model()
                         
-                        # Update state within context manager
-                        if alerts:
-                            async with self:
-                                self.eye_alerts = alerts
-                                self.eye_alert_counter = local_eye_alert_counter
-                                self.eye_frame_counter = local_eye_frame_counter
-                    except Exception as e:
-                        print(f"Eye tracking error: {str(e)}")
+                        try:
+                            results = yolo_model(processed_frame)
+                            for result in results:
+                                boxes = result.boxes
+                                for box in boxes:
+                                    x1, y1, x2, y2 = box.xyxy[0]
+                                    conf = box.conf[0]
+                                    cls = box.cls[0]
+                                    label = f"{yolo_model.names[int(cls)]} {conf:.2f}"
+                                    cv2.rectangle(processed_frame, (int(x1), int(y1)), 
+                                            (int(x2), int(y2)), (0, 255, 0), 2)
+                                    cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                        except Exception as e:
+                            print(f"YOLO detection error: {str(e)}")
 
-                # Face detection processing
-                if self.face_detection_active:
-                    try:
-                        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                        faces = self.get_face_cascade().detectMultiScale(
-                            gray,
-                            scaleFactor=self.scale_factor,
-                            minNeighbors=self.min_neighbors,
-                            minSize=(30, 30)
-                        )
+                    elif self.active_model == 3:
+                        # Initialize eye tracker only when detection is enabled
+                        if eye_tracker is None:
+                            eye_tracker = EyeTracker()
                         
-                        detection_results = []
-                        for i, (x, y, w, h) in enumerate(faces):
-                            cv2.rectangle(processed_frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                            detection_results.append({
-                                "id": i,
-                                "x": int(x),
-                                "y": int(y),
-                                "width": int(w),
-                                "height": int(h)
-                            })
-                        
-                        async with self:
-                            self.detection_results = detection_results
-                            self.face_count = len(faces)
-                    except Exception as e:
-                        print(f"Face detection error: {str(e)}")
+                        try:
+                            # Process frame with local variables
+                            processed_frame, alerts, local_eye_alert_counter, local_eye_frame_counter = eye_tracker.process_frame(
+                                processed_frame,
+                                local_eye_alert_counter,
+                                local_eye_frame_counter
+                            )
+                            
+                            # Update state within context manager
+                            if alerts:
+                                async with self:
+                                    self.eye_alerts = alerts
+                                    self.eye_alert_counter = local_eye_alert_counter
+                                    self.eye_frame_counter = local_eye_frame_counter
+                        except Exception as e:
+                            print(f"Eye tracking error: {str(e)}")
 
                 # Convert and display frame
                 _, buffer = cv2.imencode('.jpg', processed_frame)
