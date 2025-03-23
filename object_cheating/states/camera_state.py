@@ -25,6 +25,8 @@ class CameraState(rx.State):
     eye_alert_counter: int = 0
     eye_frame_counter: int = 0
     
+    _original_frame_bytes: bytes = b""
+    
     # Stream state
     camera_active: bool = False
     processing_active: bool = False
@@ -52,12 +54,6 @@ class CameraState(rx.State):
     def set_active_model(self, model_num: int):
         self.active_model = model_num
         
-    @rx.event
-    def toggle_detection(self, enabled: bool):
-        self.detection_enabled = enabled
-        self.eye_alerts = []
-        self.eye_alert_counter = 0
-        self.eye_frame_counter = 0
     
     def get_face_cascade(self) -> cv2.CascadeClassifier:
         return cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -69,6 +65,22 @@ class CameraState(rx.State):
             return CameraState.process_camera_feed
         else:
             self.current_frame = ""
+            
+    @property
+    def original_frame(self) -> np.ndarray:
+        """Convert bytes back to numpy array when needed"""
+        if not self._original_frame_bytes:
+            return None
+        nparr = np.frombuffer(self._original_frame_bytes, np.uint8)
+        return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+    def set_original_frame(self, frame: np.ndarray):
+        """Convert numpy array to bytes for storage"""
+        if frame is None:
+            self._original_frame_bytes = b""
+        else:
+            _, buffer = cv2.imencode('.jpg', frame)
+            self._original_frame_bytes = buffer.tobytes()
 
     @rx.event
     async def handle_image_upload(self, files: list[rx.UploadFile]):
@@ -80,20 +92,79 @@ class CameraState(rx.State):
             file = files[0]
             upload_data = await file.read()
             
+            # Convert image bytes to numpy array
+            nparr = np.frombuffer(upload_data, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            # Store original frame using the new method
+            self.set_original_frame(frame)
+            
             # Convert to base64 for display
             img_base64 = base64.b64encode(upload_data).decode('utf-8')
-            
-            # Get content type from file or default to jpeg
             content_type = file.content_type or "image/jpeg"
             
             # Update state
             self.uploaded_image = f"data:{content_type};base64,{img_base64}"
             self.current_frame = self.uploaded_image
-            # Ensure camera is not active when displaying uploaded image
             self.camera_active = False
             
         except Exception as e:
             self.error_message = f"Upload error: {str(e)}"
+                
+    @rx.event
+    async def toggle_detection(self, enabled: bool):
+        """Toggle detection and process uploaded image if exists"""
+        # Set state without async with
+        self.detection_enabled = enabled
+        self.eye_alerts = []
+        self.eye_alert_counter = 0
+        self.eye_frame_counter = 0
+        
+        if enabled and self._original_frame_bytes:
+            # If enabled, process image with detection
+            return CameraState.process_uploaded_image
+        elif not enabled and self.uploaded_image:
+            # If disabled, restore original uploaded image
+            self.current_frame = self.uploaded_image
+
+    @rx.event(background=True)
+    async def process_uploaded_image(self):
+        """Process uploaded image with eye detection"""
+        try:
+            frame = self.original_frame
+            if frame is None:
+                return
+            
+            if self.detection_enabled and self.active_model == 3:
+                eye_tracker = EyeTracker()
+                try:
+                    # Process frame with eye tracker
+                    processed_frame, alerts, _, _ = eye_tracker.process_frame(
+                        frame,
+                        0,  # Reset counters for static image
+                        0
+                    )
+                    
+                    # Update alerts if any
+                    if alerts:
+                        async with self:
+                            self.eye_alerts = alerts
+                    
+                    # Convert processed frame to base64
+                    _, buffer = cv2.imencode('.jpg', processed_frame)
+                    img_base64 = base64.b64encode(buffer).decode('utf-8')
+                    
+                    # Update display
+                    async with self:
+                        self.current_frame = f"data:image/jpeg;base64,{img_base64}"
+                
+                except Exception as e:
+                    print(f"Eye tracking error: {str(e)}")
+                    
+        except Exception as e:
+            print(f"Image processing error: {str(e)}")
+            async with self:
+                self.error_message = f"Image processing error: {str(e)}"
 
     @rx.event
     async def handle_video_upload(self, files: list[rx.UploadFile]):
