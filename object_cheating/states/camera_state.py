@@ -65,12 +65,22 @@ class CameraState(rx.State):
     # Model YOLO
     _yolo_model = None
     
+    # Add new YOLO model for Model 2
+    _yolo_model_2 = None
+    
     @classmethod
     def get_yolo_model(cls):
         """Get or initialize YOLO model"""
         if cls._yolo_model is None:
             cls._yolo_model = YOLO("object_cheating/models/modelv8.pt")
         return cls._yolo_model
+    
+    @classmethod
+    def get_yolo_model_2(cls):
+        """Get or initialize YOLO model 2 for cheating detection"""
+        if cls._yolo_model_2 is None:
+            cls._yolo_model_2 = YOLO("object_cheating/models/modelv8-2.pt")
+        return cls._yolo_model_2
     
     def __init__(self, *args, **kwargs):
         """Initialize state with parent initialization."""
@@ -172,8 +182,8 @@ class CameraState(rx.State):
 
             if self.detection_enabled:
                 if self.active_model == 1:
-                    # Proses dengan YOLOv8
-                    yolo_model = self.get_yolo_model()  # Get model instance
+                    # Model 1: YOLOv8 for classroom behavior
+                    yolo_model = self.get_yolo_model()
                     results = yolo_model(processed_frame)
                     for result in results:
                         boxes = result.boxes
@@ -181,18 +191,37 @@ class CameraState(rx.State):
                             x1, y1, x2, y2 = box.xyxy[0]
                             conf = box.conf[0]
                             cls = box.cls[0]
-                            # Use yolo_model directly instead of self.yolo_model
                             label = f"{yolo_model.names[int(cls)]} {conf:.2f}"
-                            cv2.rectangle(processed_frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                            cv2.rectangle(processed_frame, (int(x1), int(y1)), 
+                                        (int(x2), int(y2)), (0, 255, 0), 2)
                             cv2.putText(processed_frame, label, (int(x1), int(y1)-10), 
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                
+                elif self.active_model == 2:
+                    # Model 2: YOLOv8 for cheating detection
+                    yolo_model = self.get_yolo_model_2()
+                    results = yolo_model(processed_frame)
+                    for result in results:
+                        boxes = result.boxes
+                        for box in boxes:
+                            x1, y1, x2, y2 = box.xyxy[0]
+                            conf = box.conf[0]
+                            cls = box.cls[0]
+                            label = f"{yolo_model.names[int(cls)]} {conf:.2f}"
+                            # Use red color for cheating detection
+                            color = (0, 0, 255) if yolo_model.names[int(cls)] == "cheating" else (0, 255, 0)
+                            cv2.rectangle(processed_frame, (int(x1), int(y1)), 
+                                        (int(x2), int(y2)), color, 2)
+                            cv2.putText(processed_frame, label, (int(x1), int(y1)-10), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                
                 elif self.active_model == 3:
-                    # Proses dengan eye tracker
+                    # Model 3: Eye tracking (existing code)
                     eye_tracker = EyeTracker()
                     try:
                         processed_frame, alerts, _, _ = eye_tracker.process_frame(
                             processed_frame,
-                            0,  # Reset counters for static image
+                            0,
                             0
                         )
                         if alerts:
