@@ -6,7 +6,7 @@ def model_navigation() -> rx.Component:
     return rx.hstack(
         rx.icon_button(
             rx.icon("chevron-left"),
-            on_click=CameraState.set_active_model((CameraState.active_model - 2) % 3 + 1),
+            on_click=CameraState.set_active_model((CameraState.active_model - 2) % 2 + 1),
             variant="surface",
             height="30px",
             width="30px",
@@ -23,7 +23,7 @@ def model_navigation() -> rx.Component:
         ),
         rx.icon_button(
             rx.icon("chevron-right"),
-            on_click=CameraState.set_active_model(CameraState.active_model % 3 + 1),
+            on_click=CameraState.set_active_model(CameraState.active_model % 2 + 1),
             variant="surface",
             height="30px",
             width="30px",

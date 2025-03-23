@@ -7,6 +7,7 @@ import numpy as np
 import asyncio
 import os
 from object_cheating.utils.eye_tracker import EyeTracker
+from ultralytics import YOLO
 
 class DetectionResult(TypedDict):
     id: int
@@ -17,7 +18,7 @@ class DetectionResult(TypedDict):
 
 class CameraState(rx.State):
     # Model state
-    active_model: int = 3
+    active_model: int = 1
     detection_enabled: bool = False
     eye_alerts: list[str] = []
     
@@ -49,7 +50,21 @@ class CameraState(rx.State):
     frame_count: int = 0
     last_frame_time: float = 0.0
     face_count: int = 0
-
+    
+    # Model YOLO
+    _yolo_model = None
+    
+    @classmethod
+    def get_yolo_model(cls):
+        """Get or initialize YOLO model"""
+        if cls._yolo_model is None:
+            cls._yolo_model = YOLO("object_cheating/models/modelv8.pt")
+        return cls._yolo_model
+    
+    def __init__(self, *args, **kwargs):
+        """Initialize state with parent initialization."""
+        super().__init__(*args, **kwargs)
+        
     @rx.event
     def set_active_model(self, model_num: int):
         self.active_model = model_num
@@ -108,6 +123,10 @@ class CameraState(rx.State):
             self.current_frame = self.uploaded_image
             self.camera_active = False
             
+            # Proses gambar jika deteksi aktif
+            if self.detection_enabled:
+                return CameraState.process_uploaded_image
+            
         except Exception as e:
             self.error_message = f"Upload error: {str(e)}"
                 
@@ -129,38 +148,53 @@ class CameraState(rx.State):
 
     @rx.event(background=True)
     async def process_uploaded_image(self):
-        """Process uploaded image with eye detection"""
+        """Process uploaded image with selected model detection"""
         try:
             frame = self.original_frame
             if frame is None:
                 return
             
-            if self.detection_enabled and self.active_model == 3:
-                eye_tracker = EyeTracker()
-                try:
-                    # Process frame with eye tracker
-                    processed_frame, alerts, _, _ = eye_tracker.process_frame(
-                        frame,
-                        0,  # Reset counters for static image
-                        0
-                    )
-                    
-                    # Update alerts if any
-                    if alerts:
-                        async with self:
-                            self.eye_alerts = alerts
-                    
-                    # Convert processed frame to base64
-                    _, buffer = cv2.imencode('.jpg', processed_frame)
-                    img_base64 = base64.b64encode(buffer).decode('utf-8')
-                    
-                    # Update display
-                    async with self:
-                        self.current_frame = f"data:image/jpeg;base64,{img_base64}"
-                
-                except Exception as e:
-                    print(f"Eye tracking error: {str(e)}")
-                    
+            processed_frame = frame.copy()
+
+            if self.detection_enabled:
+                if self.active_model == 1:
+                    # Proses dengan YOLOv8
+                    yolo_model = self.get_yolo_model()  # Get model instance
+                    results = yolo_model(processed_frame)
+                    for result in results:
+                        boxes = result.boxes
+                        for box in boxes:
+                            x1, y1, x2, y2 = box.xyxy[0]
+                            conf = box.conf[0]
+                            cls = box.cls[0]
+                            # Use yolo_model directly instead of self.yolo_model
+                            label = f"{yolo_model.names[int(cls)]} {conf:.2f}"
+                            cv2.rectangle(processed_frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                            cv2.putText(processed_frame, label, (int(x1), int(y1)-10), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                elif self.active_model == 3:
+                    # Proses dengan eye tracker
+                    eye_tracker = EyeTracker()
+                    try:
+                        processed_frame, alerts, _, _ = eye_tracker.process_frame(
+                            processed_frame,
+                            0,  # Reset counters for static image
+                            0
+                        )
+                        if alerts:
+                            async with self:
+                                self.eye_alerts = alerts
+                    except Exception as e:
+                        print(f"Eye tracking error: {str(e)}")
+            
+            # Convert processed frame to base64
+            _, buffer = cv2.imencode('.jpg', processed_frame)
+            img_base64 = base64.b64encode(buffer).decode('utf-8')
+            
+            # Update display
+            async with self:
+                self.current_frame = f"data:image/jpeg;base64,{img_base64}"
+        
         except Exception as e:
             print(f"Image processing error: {str(e)}")
             async with self:
@@ -270,7 +304,7 @@ class CameraState(rx.State):
     async def clear_camera(self):
         """Clear the camera state and stop the camera if it's running."""
         self.camera_active = False
-        self.video_playing = False  # Tambahkan ini
+        self.video_playing = False 
         self.current_frame = ""
         self.uploaded_image = ""
         self.detection_results = []
