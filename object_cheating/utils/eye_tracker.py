@@ -10,14 +10,14 @@ from typing import Tuple, List, Optional
 class EyeTracker:
     def __init__(self):
         # Model parameters
-        self.IMG_SIZE = (64, 56)
-        self.CLASS_LABELS = ['center', 'left', 'right']
+        self.IMG_SIZE = (56, 64) 
+        self.CLASS_LABELS = ['center', 'right', 'left'] 
         self.FRAMES_TO_ALERT = 6
         self.last_timestamp = 0
         
         # Initialize models
         self.face_landmarker = self._init_mediapipe()
-        self.eye_model = load_model('object_cheating/models/eye_model2.h5')
+        self.eye_model = load_model('object_cheating/models/eye_model.h5')
 
     def _init_mediapipe(self) -> vision.FaceLandmarker:
         """Initialize MediaPipe Face Landmarker"""
@@ -80,7 +80,7 @@ class EyeTracker:
             if left_rect:
                 x_min, y_min, x_max, y_max = left_rect
                 cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-                cv2.putText(frame, f"Left: {left_gaze}", (x_min, y_min-10), 
+                cv2.putText(frame, f"{left_gaze}", (x_min, y_min-10), 
                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             
             # Right eye
@@ -88,7 +88,7 @@ class EyeTracker:
             if right_rect:
                 x_min, y_min, x_max, y_max = right_rect
                 cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-                cv2.putText(frame, f"Right: {right_gaze}", (x_min, y_min-10),
+                cv2.putText(frame, f"{right_gaze}", (x_min, y_min-10),
                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 
         except Exception as e:
@@ -112,8 +112,9 @@ class EyeTracker:
             x2, y2 = np.max(eye_points, axis=0)
             eye_img = gray[y1:y2, x1:x2]
             
-            processed = cv2.resize(eye_img, self.IMG_SIZE)
+            processed = cv2.resize(eye_img, (self.IMG_SIZE[1], self.IMG_SIZE[0]))
             processed = processed.reshape((1, *self.IMG_SIZE, 1)).astype(np.float32) / 255.0
+            # processed = processed.reshape((1, self.IMG_SIZE[0], self.IMG_SIZE[1], 1))
             prediction = self.eye_model.predict(processed, verbose=0)
             
             return (
