@@ -51,7 +51,7 @@ Edu View AI system focus on eye and mouth activity to detect silent cheating. It
 
 1. Clone this repository:
    ```sh
-   git clone https://github.com/yourusername/eduview.git
+   git clone -b model3-testing https://github.com/Laoode/EduView.git
    cd eduview
    ```
 2. Set up a virtual environment:
