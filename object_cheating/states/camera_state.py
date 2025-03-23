@@ -239,8 +239,9 @@ class CameraState(rx.State):
                     self.video_playing = False
                 return
 
-            # Initialize eye tracker and counters
+            # Initialize trackers and models
             eye_tracker = None
+            yolo_model = None if self.active_model == 1 else None
             frame_counter = 0
             local_eye_alert_counter = 0
             local_eye_frame_counter = 0
@@ -257,27 +258,48 @@ class CameraState(rx.State):
 
                 processed_frame = frame.copy()
 
-                # Process eye detection if enabled
-                if self.detection_enabled and self.active_model == 3:
-                    if eye_tracker is None:
-                        eye_tracker = EyeTracker()
-                    
-                    try:
-                        # Process frame with eye tracker
-                        processed_frame, alerts, local_eye_alert_counter, local_eye_frame_counter = eye_tracker.process_frame(
-                            processed_frame,
-                            local_eye_alert_counter,
-                            local_eye_frame_counter
-                        )
+                # Process detections if enabled
+                if self.detection_enabled:
+                    if self.active_model == 1:
+                        # YOLO detection
+                        if yolo_model is None:
+                            yolo_model = self.get_yolo_model()
                         
-                        # Update alerts if any
-                        if alerts:
-                            async with self:
-                                self.eye_alerts = alerts
-                                self.eye_alert_counter = local_eye_alert_counter
-                                self.eye_frame_counter = local_eye_frame_counter
-                    except Exception as e:
-                        print(f"Eye tracking error in video: {str(e)}")
+                        try:
+                            results = yolo_model(processed_frame)
+                            for result in results:
+                                boxes = result.boxes
+                                for box in boxes:
+                                    x1, y1, x2, y2 = box.xyxy[0]
+                                    conf = box.conf[0]
+                                    cls = box.cls[0]
+                                    label = f"{yolo_model.names[int(cls)]} {conf:.2f}"
+                                    cv2.rectangle(processed_frame, (int(x1), int(y1)), 
+                                            (int(x2), int(y2)), (0, 255, 0), 2)
+                                    cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                        except Exception as e:
+                            print(f"YOLO detection error: {str(e)}")
+
+                    elif self.active_model == 3:
+                        # Eye tracking code (existing)
+                        if eye_tracker is None:
+                            eye_tracker = EyeTracker()
+                        
+                        try:
+                            processed_frame, alerts, local_eye_alert_counter, local_eye_frame_counter = eye_tracker.process_frame(
+                                processed_frame,
+                                local_eye_alert_counter,
+                                local_eye_frame_counter
+                            )
+                            
+                            if alerts:
+                                async with self:
+                                    self.eye_alerts = alerts
+                                    self.eye_alert_counter = local_eye_alert_counter
+                                    self.eye_frame_counter = local_eye_frame_counter
+                        except Exception as e:
+                            print(f"Eye tracking error in video: {str(e)}")
 
                 # Convert frame to base64
                 _, buffer = cv2.imencode('.jpg', processed_frame)
