@@ -177,15 +177,18 @@ class CameraState(rx.State):
             upload_data = await file.read()
             
             # Save video to temporary file
-            self.video_path = os.path.join(rx.get_upload_dir(), file.filename)
+            self.video_path = os.path.join(rx.get_upload_dir(), file.name)  # Use .name instead of .filename
             with open(self.video_path, "wb") as f:
                 f.write(upload_data)
             
-            # Stop other media sources
+            # Stop other media sources and start video processing
             self.camera_active = False
             self.uploaded_image = ""
             self.current_frame = ""
             self.video_playing = True
+            self.detection_enabled = False  # Reset detection state
+            self.eye_alerts = []  # Clear any existing alerts
+            
             return CameraState.process_video_frames
             
         except Exception as e:
@@ -202,18 +205,48 @@ class CameraState(rx.State):
                     self.video_playing = False
                 return
 
+            # Initialize eye tracker and counters
+            eye_tracker = None
+            frame_counter = 0
+            local_eye_alert_counter = 0
+            local_eye_frame_counter = 0
+
             async with self:
                 self.processing_active = True
                 self.error_message = ""
 
             while self.video_playing and cap.isOpened():
                 ret, frame = cap.read()
-                if not ret:  # Jika video selesai
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset ke awal
+                if not ret:  # Reset video when it ends
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     continue
 
+                processed_frame = frame.copy()
+
+                # Process eye detection if enabled
+                if self.detection_enabled and self.active_model == 3:
+                    if eye_tracker is None:
+                        eye_tracker = EyeTracker()
+                    
+                    try:
+                        # Process frame with eye tracker
+                        processed_frame, alerts, local_eye_alert_counter, local_eye_frame_counter = eye_tracker.process_frame(
+                            processed_frame,
+                            local_eye_alert_counter,
+                            local_eye_frame_counter
+                        )
+                        
+                        # Update alerts if any
+                        if alerts:
+                            async with self:
+                                self.eye_alerts = alerts
+                                self.eye_alert_counter = local_eye_alert_counter
+                                self.eye_frame_counter = local_eye_frame_counter
+                    except Exception as e:
+                        print(f"Eye tracking error in video: {str(e)}")
+
                 # Convert frame to base64
-                _, buffer = cv2.imencode('.jpg', frame)
+                _, buffer = cv2.imencode('.jpg', processed_frame)
                 img_base64 = base64.b64encode(buffer).decode('utf-8')
                 
                 async with self:
