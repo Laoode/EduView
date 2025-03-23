@@ -284,7 +284,8 @@ class CameraState(rx.State):
 
             # Initialize trackers and models
             eye_tracker = None
-            yolo_model = None if self.active_model == 1 else None
+            yolo_model = None
+            yolo_model_2 = None
             frame_counter = 0
             local_eye_alert_counter = 0
             local_eye_frame_counter = 0
@@ -304,7 +305,7 @@ class CameraState(rx.State):
                 # Process detections if enabled
                 if self.detection_enabled:
                     if self.active_model == 1:
-                        # YOLO detection
+                        # Model 1: YOLOv8 for classroom behavior
                         if yolo_model is None:
                             yolo_model = self.get_yolo_model()
                         
@@ -324,8 +325,31 @@ class CameraState(rx.State):
                         except Exception as e:
                             print(f"YOLO detection error: {str(e)}")
 
+                    elif self.active_model == 2:
+                        # Model 2: YOLOv8 for cheating detection
+                        if yolo_model_2 is None:
+                            yolo_model_2 = self.get_yolo_model_2()
+                        
+                        try:
+                            results = yolo_model_2(processed_frame)
+                            for result in results:
+                                boxes = result.boxes
+                                for box in boxes:
+                                    x1, y1, x2, y2 = box.xyxy[0]
+                                    conf = box.conf[0]
+                                    cls = box.cls[0]
+                                    label = f"{yolo_model_2.names[int(cls)]} {conf:.2f}"
+                                    # Use red color for cheating detection
+                                    color = (0, 0, 255) if yolo_model_2.names[int(cls)] == "cheating" else (0, 255, 0)
+                                    cv2.rectangle(processed_frame, (int(x1), int(y1)), 
+                                            (int(x2), int(y2)), color, 2)
+                                    cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                        except Exception as e:
+                            print(f"YOLO Model 2 detection error: {str(e)}")
+
                     elif self.active_model == 3:
-                        # Eye tracking code (existing)
+                        # Model 3: Eye tracking
                         if eye_tracker is None:
                             eye_tracker = EyeTracker()
                         
