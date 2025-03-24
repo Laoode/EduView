@@ -58,7 +58,7 @@ Edu View AI system focus on eye and mouth activity to detect silent cheating. It
    - For Windows users:
    ```sh
     python -m venv venv
-    . venv\Scripts\activate
+    . venv/Scripts/activate
    ```
    - For macOS and Linux users:
    ```sh
