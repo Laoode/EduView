@@ -4,7 +4,7 @@ from object_cheating.states.camera_state import CameraState
 def model_navigation() -> rx.Component:
     """Komponen navigasi model."""
     return rx.hstack(
-        rx.button(
+        rx.icon_button(
             rx.icon("chevron-left"),
             on_click=CameraState.prev_model,
             variant="surface",
@@ -22,7 +22,7 @@ def model_navigation() -> rx.Component:
             min_width="100px",
             text_align="center",
         ),
-        rx.button(
+        rx.icon_button(
             rx.icon("chevron-right"),
             on_click=CameraState.next_model,
             variant="surface",
