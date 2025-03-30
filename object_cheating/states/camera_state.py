@@ -1,4 +1,3 @@
-
 import reflex as rx
 from typing import TypedDict, List
 import cv2
@@ -81,6 +80,19 @@ class CameraState(rx.State):
         if cls._yolo_model_2 is None:
             cls._yolo_model_2 = YOLO("object_cheating/models/modelv8-2.pt")
         return cls._yolo_model_2
+    
+    @classmethod
+    def get_class_color(cls, class_name: str) -> tuple:
+        """Get color for each class in Model 1"""
+        color_map = {
+            "Normal": (0, 255, 128),        # Green
+            "Bend Over The Desk": (255, 255, 0),    # Aqua
+            "Hand Under Table": (255, 105, 65),      # Royal Blue
+            "Look Around": (238, 130, 238),         # Violet
+            "Stand Up": (250, 230, 230),           # Lavender
+            "Wave": (193, 182, 255)                # Light Pink
+        }
+        return color_map.get(class_name, (0, 255, 128))  # Default to green if class not found
     
     def __init__(self, *args, **kwargs):
         """Initialize state with parent initialization."""
@@ -191,11 +203,13 @@ class CameraState(rx.State):
                             x1, y1, x2, y2 = box.xyxy[0]
                             conf = box.conf[0]
                             cls = box.cls[0]
-                            label = f"{yolo_model.names[int(cls)]} {conf:.2f}"
+                            class_name = yolo_model.names[int(cls)]
+                            label = f"{class_name} {conf:.2f}"
+                            color = self.get_class_color(class_name)
                             cv2.rectangle(processed_frame, (int(x1), int(y1)), 
-                                        (int(x2), int(y2)), (0, 255, 0), 2)
-                            cv2.putText(processed_frame, label, (int(x1), int(y1)-10), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                                    (int(x2), int(y2)), color, 2)
+                            cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                 
                 elif self.active_model == 2:
                     # Model 2: YOLOv8 for cheating detection
@@ -317,11 +331,13 @@ class CameraState(rx.State):
                                     x1, y1, x2, y2 = box.xyxy[0]
                                     conf = box.conf[0]
                                     cls = box.cls[0]
-                                    label = f"{yolo_model.names[int(cls)]} {conf:.2f}"
+                                    class_name = yolo_model.names[int(cls)]
+                                    label = f"{class_name} {conf:.2f}"
+                                    color = self.get_class_color(class_name)
                                     cv2.rectangle(processed_frame, (int(x1), int(y1)), 
-                                            (int(x2), int(y2)), (0, 255, 0), 2)
+                                            (int(x2), int(y2)), color, 2)
                                     cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                         except Exception as e:
                             print(f"YOLO detection error: {str(e)}")
 
@@ -457,11 +473,13 @@ class CameraState(rx.State):
                                     x1, y1, x2, y2 = box.xyxy[0]
                                     conf = box.conf[0]
                                     cls = box.cls[0]
-                                    label = f"{yolo_model.names[int(cls)]} {conf:.2f}"
+                                    class_name = yolo_model.names[int(cls)]
+                                    label = f"{class_name} {conf:.2f}"
+                                    color = self.get_class_color(class_name)
                                     cv2.rectangle(processed_frame, (int(x1), int(y1)), 
-                                            (int(x2), int(y2)), (0, 255, 0), 2)
+                                            (int(x2), int(y2)), color, 2)
                                     cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                         except Exception as e:
                             print(f"YOLO detection error: {str(e)}")
 
