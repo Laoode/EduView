@@ -408,13 +408,24 @@ class CameraState(rx.State):
     @rx.event
     async def clear_camera(self):
         """Clear the camera state and stop the camera if it's running."""
+        # First, disable detection to reset the switch state
+        self.detection_enabled = False
+        
+        # Wait a brief moment for the switch to update
+        await asyncio.sleep(0.1)
+        
+        # Then clear all other states
         self.camera_active = False
         self.video_playing = False 
         self.current_frame = ""
         self.uploaded_image = ""
+        self._original_frame_bytes = b""  # Clear stored original frame
         self.detection_results = []
         self.face_count = 0
         self.error_message = ""
+        self.eye_alerts = []
+        self.eye_alert_counter = 0
+        self.eye_frame_counter = 0
 
     @rx.event
     def toggle_face_detection(self):
