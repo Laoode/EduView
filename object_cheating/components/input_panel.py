@@ -5,6 +5,13 @@ def input_panel() -> rx.Component:
     button_style = "bg-[#ffa94d] text-black px-6 py-2 w-full text-center rounded-lg shadow-md"
     disabled_style = "bg-gray-400 text-gray-600 px-6 py-2 w-full text-center rounded-lg cursor-not-allowed"
 
+    # Check if any media is active
+    media_active = rx.cond(
+        (CameraState.current_frame != "") | CameraState.video_playing,
+        True,
+        False
+    )
+
     return rx.el.div(
         rx.el.div(
             rx.el.h3("Media Controls", class_name="text-lg font-semibold mb-2 text-gray-900"),
@@ -14,7 +21,7 @@ def input_panel() -> rx.Component:
                     rx.button(
                         "📷 Image",
                         class_name=rx.cond(
-                            CameraState.current_frame != "",
+                            CameraState.camera_active | media_active,
                             disabled_style,
                             button_style
                         ),
@@ -25,7 +32,7 @@ def input_panel() -> rx.Component:
                     margin="0",
                     id="image_upload",
                     style={"border": "none"},
-                    disabled=CameraState.current_frame != "",
+                    disabled=CameraState.camera_active | media_active,
                 ),
                 rx.button(
                     "Upload",
@@ -48,7 +55,7 @@ def input_panel() -> rx.Component:
                     rx.button(
                         "🎬 Video",
                         class_name=rx.cond(
-                            CameraState.current_frame != "",
+                            CameraState.camera_active | media_active,
                             disabled_style,
                             button_style
                         ),
@@ -59,7 +66,7 @@ def input_panel() -> rx.Component:
                     margin="0",
                     id="video_upload",
                     style={"border": "none"},
-                    disabled=CameraState.current_frame != "",
+                    disabled=CameraState.camera_active | media_active,
                 ),
                 rx.button(
                     "Upload",
@@ -86,11 +93,11 @@ def input_panel() -> rx.Component:
                     "🎥 Webcam",
                     on_click=CameraState.toggle_camera,
                     class_name=rx.cond(
-                        CameraState.camera_active,
+                        CameraState.camera_active | media_active,
                         disabled_style,
                         f"{button_style} hover:bg-[#ff922b]"
                     ),
-                    is_disabled=CameraState.camera_active
+                    disabled=CameraState.camera_active | media_active
                 ),
                 rx.button("💾 Save", class_name=button_style),
                 class_name="grid grid-cols-2 gap-4 w-full mt-4"
@@ -105,7 +112,7 @@ def input_panel() -> rx.Component:
                         f"{button_style} hover:bg-[#ff922b]",
                         disabled_style
                     ),
-                    is_disabled=CameraState.current_frame == ""
+                    disabled=CameraState.current_frame == ""
                 ),
                 class_name="flex justify-center w-full mt-4"
             ),
