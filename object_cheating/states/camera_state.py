@@ -7,6 +7,7 @@ import asyncio
 import os
 from object_cheating.utils.eye_tracker import EyeTracker
 from ultralytics import YOLO
+from object_cheating.states.threshold_state import ThresholdState
 
 class DetectionResult(TypedDict):
     id: int
@@ -15,10 +16,10 @@ class DetectionResult(TypedDict):
     width: int
     height: int
 
-class CameraState(rx.State):
+class CameraState(ThresholdState):
     # Model state
     active_model: int = 1  # Contoh definisi state variable
-
+    
     @rx.event
     def prev_model(self):
         if self.active_model > 1:
@@ -132,6 +133,36 @@ class CameraState(rx.State):
         else:
             _, buffer = cv2.imencode('.jpg', frame)
             self._original_frame_bytes = buffer.tobytes()
+            
+    def _apply_yolo_prediction(self, model, frame, is_model_1=True):
+        """Helper method to apply YOLO prediction with current thresholds"""
+        results = model(
+            frame,
+            conf=self.confidence_threshold,
+            iou=self.iou_threshold
+        )
+        processed_frame = frame.copy()
+        
+        for result in results:
+            boxes = result.boxes
+            for box in boxes:
+                x1, y1, x2, y2 = box.xyxy[0]
+                conf = box.conf[0]
+                cls = box.cls[0]
+                class_name = model.names[int(cls)]
+                label = f"{class_name} {conf:.2f}"
+                
+                if is_model_1:
+                    color = self.get_class_color(class_name)
+                else:
+                    color = (0, 0, 255) if class_name == "cheating" else (0, 255, 0)
+                    
+                cv2.rectangle(processed_frame, (int(x1), int(y1)), 
+                        (int(x2), int(y2)), color, 2)
+                cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                        
+        return processed_frame
 
     @rx.event
     async def handle_image_upload(self, files: list[rx.UploadFile]):
@@ -189,45 +220,17 @@ class CameraState(rx.State):
             frame = self.original_frame
             if frame is None:
                 return
-            
-            processed_frame = frame.copy()
 
             if self.detection_enabled:
                 if self.active_model == 1:
                     # Model 1: YOLOv8 for classroom behavior
                     yolo_model = self.get_yolo_model()
-                    results = yolo_model(processed_frame)
-                    for result in results:
-                        boxes = result.boxes
-                        for box in boxes:
-                            x1, y1, x2, y2 = box.xyxy[0]
-                            conf = box.conf[0]
-                            cls = box.cls[0]
-                            class_name = yolo_model.names[int(cls)]
-                            label = f"{class_name} {conf:.2f}"
-                            color = self.get_class_color(class_name)
-                            cv2.rectangle(processed_frame, (int(x1), int(y1)), 
-                                    (int(x2), int(y2)), color, 2)
-                            cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    processed_frame = self._apply_yolo_prediction(yolo_model, frame, True)
                 
                 elif self.active_model == 2:
                     # Model 2: YOLOv8 for cheating detection
                     yolo_model = self.get_yolo_model_2()
-                    results = yolo_model(processed_frame)
-                    for result in results:
-                        boxes = result.boxes
-                        for box in boxes:
-                            x1, y1, x2, y2 = box.xyxy[0]
-                            conf = box.conf[0]
-                            cls = box.cls[0]
-                            label = f"{yolo_model.names[int(cls)]} {conf:.2f}"
-                            # Use red color for cheating detection
-                            color = (0, 0, 255) if yolo_model.names[int(cls)] == "cheating" else (0, 255, 0)
-                            cv2.rectangle(processed_frame, (int(x1), int(y1)), 
-                                        (int(x2), int(y2)), color, 2)
-                            cv2.putText(processed_frame, label, (int(x1), int(y1)-10), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    processed_frame = self._apply_yolo_prediction(yolo_model, frame, False)
                 
                 elif self.active_model == 3:
                     # Model 3: Eye tracking (existing code)
@@ -322,47 +325,13 @@ class CameraState(rx.State):
                         # Model 1: YOLOv8 for classroom behavior
                         if yolo_model is None:
                             yolo_model = self.get_yolo_model()
-                        
-                        try:
-                            results = yolo_model(processed_frame)
-                            for result in results:
-                                boxes = result.boxes
-                                for box in boxes:
-                                    x1, y1, x2, y2 = box.xyxy[0]
-                                    conf = box.conf[0]
-                                    cls = box.cls[0]
-                                    class_name = yolo_model.names[int(cls)]
-                                    label = f"{class_name} {conf:.2f}"
-                                    color = self.get_class_color(class_name)
-                                    cv2.rectangle(processed_frame, (int(x1), int(y1)), 
-                                            (int(x2), int(y2)), color, 2)
-                                    cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                        except Exception as e:
-                            print(f"YOLO detection error: {str(e)}")
+                        processed_frame = self._apply_yolo_prediction(yolo_model, frame, True)
 
                     elif self.active_model == 2:
                         # Model 2: YOLOv8 for cheating detection
                         if yolo_model_2 is None:
                             yolo_model_2 = self.get_yolo_model_2()
-                        
-                        try:
-                            results = yolo_model_2(processed_frame)
-                            for result in results:
-                                boxes = result.boxes
-                                for box in boxes:
-                                    x1, y1, x2, y2 = box.xyxy[0]
-                                    conf = box.conf[0]
-                                    cls = box.cls[0]
-                                    label = f"{yolo_model_2.names[int(cls)]} {conf:.2f}"
-                                    # Use red color for cheating detection
-                                    color = (0, 0, 255) if yolo_model_2.names[int(cls)] == "cheating" else (0, 255, 0)
-                                    cv2.rectangle(processed_frame, (int(x1), int(y1)), 
-                                            (int(x2), int(y2)), color, 2)
-                                    cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                        except Exception as e:
-                            print(f"YOLO Model 2 detection error: {str(e)}")
+                        processed_frame = self._apply_yolo_prediction(yolo_model_2, frame, False)
 
                     elif self.active_model == 3:
                         # Model 3: Eye tracking
@@ -475,47 +444,13 @@ class CameraState(rx.State):
                         # Model 1: YOLOv8 for classroom behavior
                         if yolo_model is None:
                             yolo_model = self.get_yolo_model()
-                        
-                        try:
-                            results = yolo_model(processed_frame)
-                            for result in results:
-                                boxes = result.boxes
-                                for box in boxes:
-                                    x1, y1, x2, y2 = box.xyxy[0]
-                                    conf = box.conf[0]
-                                    cls = box.cls[0]
-                                    class_name = yolo_model.names[int(cls)]
-                                    label = f"{class_name} {conf:.2f}"
-                                    color = self.get_class_color(class_name)
-                                    cv2.rectangle(processed_frame, (int(x1), int(y1)), 
-                                            (int(x2), int(y2)), color, 2)
-                                    cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                        except Exception as e:
-                            print(f"YOLO detection error: {str(e)}")
+                        processed_frame = self._apply_yolo_prediction(yolo_model, frame, True)
 
                     elif self.active_model == 2:
                         # Model 2: YOLOv8 for cheating detection
                         if yolo_model_2 is None:
                             yolo_model_2 = self.get_yolo_model_2()
-                        
-                        try:
-                            results = yolo_model_2(processed_frame)
-                            for result in results:
-                                boxes = result.boxes
-                                for box in boxes:
-                                    x1, y1, x2, y2 = box.xyxy[0]
-                                    conf = box.conf[0]
-                                    cls = box.cls[0]
-                                    label = f"{yolo_model_2.names[int(cls)]} {conf:.2f}"
-                                    # Use red color for cheating detection
-                                    color = (0, 0, 255) if yolo_model_2.names[int(cls)] == "cheating" else (0, 255, 0)
-                                    cv2.rectangle(processed_frame, (int(x1), int(y1)), 
-                                            (int(x2), int(y2)), color, 2)
-                                    cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                        except Exception as e:
-                            print(f"YOLO Model 2 detection error: {str(e)}")
+                        processed_frame = self._apply_yolo_prediction(yolo_model_2, frame, False)
 
                     elif self.active_model == 3:
                         # Model 3: Eye tracking
