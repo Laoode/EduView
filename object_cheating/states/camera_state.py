@@ -30,6 +30,29 @@ class CameraState(ThresholdState):
         if self.active_model < 3:  # Ganti 3 dengan jumlah maksimum model Anda
             self.active_model += 1
             
+    # Add new state variables for dialog
+    show_warning_dialog: bool = False
+    target_model: int = 0  # To store the model we want to switch to
+    
+    @rx.event
+    async def try_change_model(self, target: int):
+        """Try to change model, show warning if detection is enabled"""
+        if self.detection_enabled:
+            self.target_model = target
+            self.show_warning_dialog = True
+        else:
+            # If detection is disabled, change model directly
+            if target > self.active_model:
+                self.next_model()
+            else:
+                self.prev_model()
+                
+    @rx.event
+    async def close_warning_dialog(self):
+        """Close the warning dialog without changing model"""
+        self.show_warning_dialog = False
+        self.target_model = 0
+            
     detection_enabled: bool = False
     eye_alerts: list[str] = []
     

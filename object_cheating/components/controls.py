@@ -6,7 +6,7 @@ def model_navigation() -> rx.Component:
     return rx.hstack(
         rx.icon_button(
             rx.icon("chevron-left"),
-            on_click=CameraState.prev_model,
+            on_click=lambda: CameraState.try_change_model(CameraState.active_model - 1),
             variant="surface",
             height="30px",
             width="30px",
@@ -24,7 +24,7 @@ def model_navigation() -> rx.Component:
         ),
         rx.icon_button(
             rx.icon("chevron-right"),
-            on_click=CameraState.next_model,
+            on_click=lambda: CameraState.try_change_model(CameraState.active_model + 1),
             variant="surface",
             height="30px",
             width="30px",
