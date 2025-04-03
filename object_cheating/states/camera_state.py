@@ -262,6 +262,8 @@ class CameraState(ThresholdState):
             frame = self.original_frame
             if frame is None:
                 return
+            
+            processed_frame = frame.copy()
 
             if self.detection_enabled:
                 if self.active_model == 1:
