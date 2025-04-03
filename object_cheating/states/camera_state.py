@@ -199,7 +199,7 @@ class CameraState(ThresholdState):
                 if is_model_1:
                     color = self.get_class_color(class_name)
                 else:
-                    color = (0, 0, 255) if class_name == "cheating" else (0, 255, 0)
+                    color = (71, 99, 255) if class_name == "cheating" else (0, 252, 124)
                     
                 cv2.rectangle(processed_frame, (int(x1), int(y1)), 
                         (int(x2), int(y2)), color, 2)
