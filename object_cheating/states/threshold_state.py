@@ -35,3 +35,12 @@ class ThresholdState(rx.State):
             self.iou_threshold = float(value)
         except ValueError:
             print("Invalid input for IoU threshold")
+            
+    def set_model_defaults(self, model_number: int):
+        """Set default threshold values based on model number"""
+        if model_number == 3:  # Eye tracking model
+            self.confidence_threshold = 0.6
+            self.iou_threshold = 0.3
+        else:  # YOLO models
+            self.confidence_threshold = 0.25
+            self.iou_threshold = 0.70

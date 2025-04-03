@@ -1,5 +1,6 @@
 import reflex as rx
 from object_cheating.states.threshold_state import ThresholdState
+from object_cheating.states.camera_state import CameraState
 
 def threshold() -> rx.Component:
     return rx.box(
@@ -52,9 +53,16 @@ def threshold() -> rx.Component:
                 justify="between",
                 align="center",
             ),
-            # IoU Threshold Section
+            # Second Threshold Section (IoU/Eye Movement)
             rx.hstack(
-                rx.text("IoU Threshold:", class_name="font-medium text-gray-700"),
+                rx.text(
+                    rx.cond(
+                        CameraState.active_model == 3,
+                        "Eye Movement Threshold:",
+                        "IoU Threshold:"
+                    ),
+                    class_name="font-medium text-gray-700"
+                ),
                 rx.spacer(),
                 rx.hstack(
                     rx.input(
@@ -100,7 +108,8 @@ def threshold() -> rx.Component:
                 align="center",
                 mt="4",
             ),
-        class_name="bg-[#ffec99] p-4 rounded-lg shadow-md w-full"
+            class_name="bg-[#ffec99] p-4 rounded-lg shadow-md w-full"
         ),
         width="100%",
+        # display=rx.cond(CameraState.detection_enabled, "block", "none"),  # Fixed this line
     )

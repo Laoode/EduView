@@ -46,6 +46,8 @@ class CameraState(ThresholdState):
                 self.next_model()
             else:
                 self.prev_model()
+            # Set default thresholds for new model
+            self.set_model_defaults(target)  # Removed await, calling directly
                 
     @rx.event
     async def close_warning_dialog(self):
@@ -277,13 +279,17 @@ class CameraState(ThresholdState):
                     processed_frame = self._apply_yolo_prediction(yolo_model, frame, False)
                 
                 elif self.active_model == 3:
-                    # Model 3: Eye tracking (existing code)
+                # Model 3: Eye tracking with current thresholds
                     eye_tracker = EyeTracker()
                     try:
                         processed_frame, alerts, _, _ = eye_tracker.process_frame(
                             processed_frame,
                             0,
-                            0
+                            0,
+                            cnn_threshold=self.confidence_threshold,  # Use threshold from settings
+                            movement_threshold=self.iou_threshold,    # Use as eye movement threshold
+                            duration_threshold=5.0,
+                            is_video=False  # Specify image mode
                         )
                         if alerts:
                             async with self:
@@ -386,7 +392,11 @@ class CameraState(ThresholdState):
                             processed_frame, alerts, local_eye_alert_counter, local_eye_frame_counter = eye_tracker.process_frame(
                                 processed_frame,
                                 local_eye_alert_counter,
-                                local_eye_frame_counter
+                                local_eye_frame_counter,
+                                cnn_threshold=self.confidence_threshold,
+                                movement_threshold=self.iou_threshold,
+                                duration_threshold=5.0,
+                                is_video=True  # Specify video mode
                             )
                             
                             if alerts:
@@ -505,7 +515,11 @@ class CameraState(ThresholdState):
                             processed_frame, alerts, local_eye_alert_counter, local_eye_frame_counter = eye_tracker.process_frame(
                                 processed_frame,
                                 local_eye_alert_counter,
-                                local_eye_frame_counter
+                                local_eye_frame_counter,
+                                cnn_threshold=self.confidence_threshold,
+                                movement_threshold=self.iou_threshold,
+                                duration_threshold=5.0,
+                                is_video=True  # Specify video mode
                             )
                             
                             if alerts:
