@@ -8,11 +8,13 @@ from object_cheating.components.coordinate_panel import coordinate_panel
 from object_cheating.components.table import _tables_v2
 from object_cheating.components.input_panel import input_panel
 from object_cheating.components.warning_dialog import warning_dialog
+from object_cheating.components.delete_dialog import delete_dialog
 
 def index() -> rx.Component:
     return rx.box(
         # Warning dialog at root level for proper overlay
         warning_dialog(),
+        delete_dialog(),
         rx.el.div(
             rx.el.div(
                 rx.el.h1(

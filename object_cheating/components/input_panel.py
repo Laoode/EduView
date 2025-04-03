@@ -106,7 +106,7 @@ def input_panel() -> rx.Component:
             rx.el.div(
                 rx.button(
                     "🗑️ Clear",
-                    on_click=CameraState.clear_camera,
+                    on_click=CameraState.try_clear_camera,
                     class_name=rx.cond(
                         CameraState.current_frame != "",
                         f"{button_style} hover:bg-[#ff922b]",

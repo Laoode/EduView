@@ -52,6 +52,25 @@ class CameraState(ThresholdState):
         """Close the warning dialog without changing model"""
         self.show_warning_dialog = False
         self.target_model = 0
+        
+    # Add new state variables for delete dialog
+    show_delete_dialog: bool = False
+    
+    @rx.event
+    async def try_clear_camera(self):
+        """Show confirmation dialog before clearing"""
+        self.show_delete_dialog = True
+    
+    @rx.event
+    async def confirm_clear(self):
+        """Confirm and execute clear operation"""
+        self.show_delete_dialog = False
+        return CameraState.clear_camera
+    
+    @rx.event
+    async def cancel_clear(self):
+        """Cancel clear operation"""
+        self.show_delete_dialog = False
             
     detection_enabled: bool = False
     eye_alerts: list[str] = []
