@@ -5,6 +5,7 @@ import base64
 import numpy as np
 import asyncio
 import os
+import time
 from object_cheating.utils.eye_tracker import EyeTracker
 from ultralytics import YOLO
 from object_cheating.states.threshold_state import ThresholdState
@@ -19,6 +20,10 @@ class DetectionResult(TypedDict):
 class CameraState(ThresholdState):
     # Model state
     active_model: int = 1  # Contoh definisi state variable
+    
+    # Stats panel
+    detection_count: int = 0
+    processing_time: float = 0.0
     
     @rx.event
     def prev_model(self):
@@ -109,6 +114,8 @@ class CameraState(ThresholdState):
     # Model YOLO
     _yolo_model = None
     
+    selected_target: str = "All"
+    
     # Add new YOLO model for Model 2
     _yolo_model_2 = None
     
@@ -180,13 +187,19 @@ class CameraState(ThresholdState):
             
     def _apply_yolo_prediction(self, model, frame, is_model_1=True):
         """Helper method to apply YOLO prediction with current thresholds"""
+        start_time = time.time()
+        
+        # Run prediction
         results = model(
             frame,
             conf=self.confidence_threshold,
             iou=self.iou_threshold
         )
-        processed_frame = frame.copy()
         
+        processed_frame = frame.copy()
+        total_detections = 0
+        
+        # First pass: Count all detections and draw boxes
         for result in results:
             boxes = result.boxes
             for box in boxes:
@@ -194,20 +207,32 @@ class CameraState(ThresholdState):
                 conf = box.conf[0]
                 cls = box.cls[0]
                 class_name = model.names[int(cls)]
+                total_detections += 1
+                
+                # Draw detection regardless of selected target
                 label = f"{class_name} {conf:.2f}"
                 
                 if is_model_1:
                     color = self.get_class_color(class_name)
                 else:
                     color = (71, 99, 255) if class_name == "cheating" else (0, 252, 124)
-                    
-                cv2.rectangle(processed_frame, (int(x1), int(y1)), 
-                        (int(x2), int(y2)), color, 2)
-                cv2.putText(processed_frame, label, (int(x1), int(y1)-10),
+                
+                # Convert coordinates to integers
+                x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+                
+                # Draw bounding box and label
+                cv2.rectangle(processed_frame, (x1, y1), (x2, y2), color, 2)
+                cv2.putText(processed_frame, label, (x1, y1-10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                        
-        return processed_frame
-
+        
+        # Calculate runtime
+        end_time = time.time()
+        process_time = round((end_time - start_time), 1)
+        
+        print(total_detections)
+        print(process_time)
+        
+        return processed_frame, total_detections, process_time
     @rx.event
     async def handle_image_upload(self, files: list[rx.UploadFile]):
         """Handle image upload from local computer."""
@@ -271,12 +296,22 @@ class CameraState(ThresholdState):
                 if self.active_model == 1:
                     # Model 1: YOLOv8 for classroom behavior
                     yolo_model = self.get_yolo_model()
-                    processed_frame = self._apply_yolo_prediction(yolo_model, frame, True)
+                    processed_frame, total_detections, process_time = self._apply_yolo_prediction(yolo_model, frame, True)
+                    
+                    # Update stats inside context manager
+                    async with self:
+                        self.detection_count = total_detections
+                        self.processing_time = process_time
                 
                 elif self.active_model == 2:
                     # Model 2: YOLOv8 for cheating detection
                     yolo_model = self.get_yolo_model_2()
-                    processed_frame = self._apply_yolo_prediction(yolo_model, frame, False)
+                    processed_frame, total_detections, process_time = self._apply_yolo_prediction(yolo_model, frame, is_model_1=False)
+                    
+                    # Update stats inside context manager
+                    async with self:
+                        self.detection_count = total_detections
+                        self.processing_time = process_time
                 
                 elif self.active_model == 3:
                 # Model 3: Eye tracking with current thresholds
@@ -356,6 +391,7 @@ class CameraState(ThresholdState):
             frame_counter = 0
             local_eye_alert_counter = 0
             local_eye_frame_counter = 0
+            last_time = time.time()
 
             async with self:
                 self.processing_active = True
@@ -375,13 +411,41 @@ class CameraState(ThresholdState):
                         # Model 1: YOLOv8 for classroom behavior
                         if yolo_model is None:
                             yolo_model = self.get_yolo_model()
-                        processed_frame = self._apply_yolo_prediction(yolo_model, frame, True)
+                        processed_frame, total_detections, process_time = self._apply_yolo_prediction(yolo_model, frame, True)
+                            
+                        # Calculate FPS
+                        current_time = time.time()
+                        time_diff = current_time - last_time
+                        if time_diff > 0:
+                            current_fps = 1.0 / time_diff
+                            current_fps = round(current_fps, 1)
+                            
+                        async with self:
+                            self.detection_count = total_detections
+                            self.processing_time = process_time
+                            self.fps = current_fps  # Perbarui CameraState.fps
+                            
+                        last_time = current_time
 
                     elif self.active_model == 2:
                         # Model 2: YOLOv8 for cheating detection
                         if yolo_model_2 is None:
                             yolo_model_2 = self.get_yolo_model_2()
-                        processed_frame = self._apply_yolo_prediction(yolo_model_2, frame, False)
+                        processed_frame, total_detections, process_time = self._apply_yolo_prediction(yolo_model_2, frame, is_model_1=False)
+                            
+                        # Calculate FPS
+                        current_time = time.time()
+                        time_diff = current_time - last_time
+                        if time_diff > 0:
+                            current_fps = 1.0 / time_diff
+                            current_fps = round(current_fps, 1)
+                            
+                        async with self:
+                            self.detection_count = total_detections
+                            self.processing_time = process_time
+                            self.fps = current_fps  # Perbarui CameraState.fps
+                            
+                        last_time = current_time
 
                     elif self.active_model == 3:
                         # Model 3: Eye tracking
@@ -449,6 +513,9 @@ class CameraState(ThresholdState):
         self.eye_alerts = []
         self.eye_alert_counter = 0
         self.eye_frame_counter = 0
+        self.detection_count = 0
+        self.processing_time = 0.0
+        self.fps = 0.0
 
     @rx.event
     def toggle_face_detection(self):
@@ -480,6 +547,7 @@ class CameraState(ThresholdState):
             frame_counter = 0
             local_eye_alert_counter = 0
             local_eye_frame_counter = 0
+            last_time = time.time()
 
             async with self:
                 self.processing_active = True
@@ -498,13 +566,41 @@ class CameraState(ThresholdState):
                         # Model 1: YOLOv8 for classroom behavior
                         if yolo_model is None:
                             yolo_model = self.get_yolo_model()
-                        processed_frame = self._apply_yolo_prediction(yolo_model, frame, True)
+                        processed_frame, total_detections, process_time = self._apply_yolo_prediction(yolo_model, frame, True)
+                            
+                        # Calculate FPS
+                        current_time = time.time()
+                        time_diff = current_time - last_time
+                        if time_diff > 0:
+                            current_fps = 1.0 / time_diff
+                            current_fps = round(current_fps, 1)
+                            
+                        async with self:
+                            self.detection_count = total_detections
+                            self.processing_time = process_time
+                            self.fps = current_fps  # Perbarui CameraState.fps
+                            
+                        last_time = current_time
 
                     elif self.active_model == 2:
                         # Model 2: YOLOv8 for cheating detection
                         if yolo_model_2 is None:
                             yolo_model_2 = self.get_yolo_model_2()
-                        processed_frame = self._apply_yolo_prediction(yolo_model_2, frame, False)
+                        processed_frame, total_detections, process_time = self._apply_yolo_prediction(yolo_model_2, frame, is_model_1=False)
+                            
+                        # Calculate FPS
+                        current_time = time.time()
+                        time_diff = current_time - last_time
+                        if time_diff > 0:
+                            current_fps = 1.0 / time_diff
+                            current_fps = round(current_fps, 1)
+                            
+                        async with self:
+                            self.detection_count = total_detections
+                            self.processing_time = process_time
+                            self.fps = current_fps  # Perbarui CameraState.fps
+                            
+                        last_time = current_time
 
                     elif self.active_model == 3:
                         # Model 3: Eye tracking
