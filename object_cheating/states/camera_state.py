@@ -317,7 +317,7 @@ class CameraState(ThresholdState):
                 # Model 3: Eye tracking with current thresholds
                     eye_tracker = EyeTracker()
                     try:
-                        processed_frame, alerts, _, _ = eye_tracker.process_frame(
+                        processed_frame, alerts, total_detections, process_time = eye_tracker.process_eye_detections(
                             processed_frame,
                             0,
                             0,
@@ -326,11 +326,18 @@ class CameraState(ThresholdState):
                             duration_threshold=5.0,
                             is_video=False  # Specify image mode
                         )
-                        if alerts:
-                            async with self:
+
+                        # Update stats
+                        async with self:
+                            self.detection_count = total_detections
+                            self.processing_time = process_time
+                            if alerts:
                                 self.eye_alerts = alerts
                     except Exception as e:
                         print(f"Eye tracking error: {str(e)}")
+                        async with self:
+                            self.detection_count = 0
+                            self.processing_time = 0.0
             
             # Convert processed frame to base64
             _, buffer = cv2.imencode('.jpg', processed_frame)
@@ -453,7 +460,7 @@ class CameraState(ThresholdState):
                             eye_tracker = EyeTracker()
                         
                         try:
-                            processed_frame, alerts, local_eye_alert_counter, local_eye_frame_counter = eye_tracker.process_frame(
+                            processed_frame, alerts, total_detections, process_time = eye_tracker.process_eye_detections(
                                 processed_frame,
                                 local_eye_alert_counter,
                                 local_eye_frame_counter,
@@ -463,13 +470,27 @@ class CameraState(ThresholdState):
                                 is_video=True  # Specify video mode
                             )
                             
-                            if alerts:
-                                async with self:
+                            # Hitung FPS
+                            current_time = time.time()
+                            time_diff = current_time - last_time
+                            current_fps = round(1.0 / time_diff, 1) if time_diff > 0 else 0.0
+                            
+                            # Update stats
+                            async with self:
+                                self.detection_count = total_detections
+                                self.processing_time = process_time
+                                self.fps = current_fps
+                                if alerts:
                                     self.eye_alerts = alerts
                                     self.eye_alert_counter = local_eye_alert_counter
                                     self.eye_frame_counter = local_eye_frame_counter
+                            last_time = current_time
                         except Exception as e:
                             print(f"Eye tracking error in video: {str(e)}")
+                            async with self:
+                                self.detection_count = 0
+                                self.processing_time = 0.0
+                                self.fps = 0.0
 
                 # Convert frame to base64
                 _, buffer = cv2.imencode('.jpg', processed_frame)
@@ -608,7 +629,7 @@ class CameraState(ThresholdState):
                             eye_tracker = EyeTracker()
                         
                         try:
-                            processed_frame, alerts, local_eye_alert_counter, local_eye_frame_counter = eye_tracker.process_frame(
+                            processed_frame, alerts, total_detections, process_time = eye_tracker.process_eye_detections(
                                 processed_frame,
                                 local_eye_alert_counter,
                                 local_eye_frame_counter,
@@ -618,13 +639,27 @@ class CameraState(ThresholdState):
                                 is_video=True  # Specify video mode
                             )
                             
-                            if alerts:
-                                async with self:
+                            # Hitung FPS
+                            current_time = time.time()
+                            time_diff = current_time - last_time
+                            current_fps = round(1.0 / time_diff, 1) if time_diff > 0 else 0.0
+                            
+                            # Update stats
+                            async with self:
+                                self.detection_count = total_detections
+                                self.processing_time = process_time
+                                self.fps = current_fps
+                                if alerts:
                                     self.eye_alerts = alerts
                                     self.eye_alert_counter = local_eye_alert_counter
                                     self.eye_frame_counter = local_eye_frame_counter
+                            last_time = current_time
                         except Exception as e:
-                            print(f"Eye tracking error: {str(e)}")
+                            print(f"Eye tracking error in video: {str(e)}")
+                            async with self:
+                                self.detection_count = 0
+                                self.processing_time = 0.0
+                                self.fps = 0.0
 
                 # Convert and display frame
                 _, buffer = cv2.imencode('.jpg', processed_frame)

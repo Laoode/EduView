@@ -42,6 +42,10 @@ class EyeTracker:
         current_time = time.time()
         processed_frame = frame.copy()
         
+        # Inisialisasi nilai default untuk arah dan kepercayaan
+        left_direction, left_conf = "center", 0.0
+        right_direction, right_conf = "center", 0.0
+        
         try:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             
@@ -59,6 +63,10 @@ class EyeTracker:
                 
                 left_direction, left_conf = left_result
                 right_direction, right_conf = right_result
+                
+                # Log untuk debugging
+                print(f"Left eye: direction={left_direction}, confidence={left_conf}")
+                print(f"Right eye: direction={right_direction}, confidence={right_conf}")
                 
                 # Check if either eye has sufficient confidence
                 if left_conf > cnn_threshold or right_conf > cnn_threshold:
@@ -100,29 +108,31 @@ class EyeTracker:
                 # Draw eye boxes and labels
                 h, w = frame.shape[:2]
                 
-                # Draw left eye
-                left_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
-                                    for i in [33, 133, 159, 145]], dtype=np.int32)
-                left_rect = cv2.boundingRect(left_points)
-                cv2.rectangle(processed_frame, 
-                            (left_rect[0], left_rect[1]), 
-                            (left_rect[0] + left_rect[2], left_rect[1] + left_rect[3]), 
-                            color, 2)
-                cv2.putText(processed_frame, left_direction, 
-                           (left_rect[0], left_rect[1] - 10),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                # Draw left eye only if detected with sufficient confidence
+                if left_conf > cnn_threshold:
+                    left_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
+                                        for i in [33, 133, 159, 145]], dtype=np.int32)
+                    left_rect = cv2.boundingRect(left_points)
+                    cv2.rectangle(processed_frame, 
+                                (left_rect[0], left_rect[1]), 
+                                (left_rect[0] + left_rect[2], left_rect[1] + left_rect[3]), 
+                                color, 2)
+                    cv2.putText(processed_frame, left_direction, 
+                               (left_rect[0], left_rect[1] - 10),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                 
-                # Draw right eye
-                right_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
-                                     for i in [362, 263, 386, 374]], dtype=np.int32)
-                right_rect = cv2.boundingRect(right_points)
-                cv2.rectangle(processed_frame, 
-                            (right_rect[0], right_rect[1]), 
-                            (right_rect[0] + right_rect[2], right_rect[1] + right_rect[3]), 
-                            color, 2)
-                cv2.putText(processed_frame, right_direction, 
-                           (right_rect[0], right_rect[1] - 10),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                # Draw right eye only if detected with sufficient confidence
+                if right_conf > cnn_threshold:
+                    right_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
+                                         for i in [362, 263, 386, 374]], dtype=np.int32)
+                    right_rect = cv2.boundingRect(right_points)
+                    cv2.rectangle(processed_frame, 
+                                (right_rect[0], right_rect[1]), 
+                                (right_rect[0] + right_rect[2], right_rect[1] + right_rect[3]), 
+                                color, 2)
+                    cv2.putText(processed_frame, right_direction, 
+                               (right_rect[0], right_rect[1] - 10),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                 
                 # Add alert status to top-right
                 status_text = (
@@ -137,7 +147,7 @@ class EyeTracker:
         except Exception as e:
             print(f"Eye tracking error: {str(e)}")
             
-        return processed_frame, alerts, alert_counter, frame_counter
+        return processed_frame, alerts, alert_counter, frame_counter, left_direction, left_conf, right_direction, right_conf
 
     def _process_single_eye(self, frame: np.ndarray, landmarks, indices) -> Tuple[str, float]:
         try:
@@ -168,3 +178,56 @@ class EyeTracker:
         except Exception as e:
             print(f"Error in eye processing: {str(e)}")
             return "center", 0.0
+
+    def process_eye_detections(self, frame, alert_counter, frame_counter, 
+                              cnn_threshold=0.6, movement_threshold=0.3, 
+                              duration_threshold=5.0, is_video=False):
+        """
+        Process eye tracking detections and return processed frame, alerts, total detections, and process time.
+        
+        Args:
+            frame: Input frame to process
+            alert_counter: Counter for alerts
+            frame_counter: Counter for frames
+            cnn_threshold: Confidence threshold for eye direction detection
+            movement_threshold: Movement threshold for eye tracking
+            duration_threshold: Duration threshold for alerts
+            is_video: Boolean indicating if the input is a video
+            
+        Returns:
+            tuple: (processed_frame, alerts, total_detections, process_time)
+        """
+        start_time = time.time()
+        total_detections = 0
+        
+        try:
+            # Proses frame menggunakan fungsi yang sudah ada
+            processed_frame, alerts, alert_counter, frame_counter, left_direction, left_conf, right_direction, right_conf = self.process_frame(
+                frame,
+                alert_counter,
+                frame_counter,
+                cnn_threshold=cnn_threshold,
+                movement_threshold=movement_threshold,
+                duration_threshold=duration_threshold,
+                is_video=is_video
+            )
+
+            # Tambah deteksi jika mata terdeteksi (confidence cukup, termasuk arah "center")
+            if left_conf > cnn_threshold:
+                total_detections += 1
+            if right_conf > cnn_threshold:
+                total_detections += 1
+
+            # Hitung runtime
+            end_time = time.time()
+            process_time = round((end_time - start_time), 1)
+
+            # Debugging output
+            print(f"Total detections: {total_detections}")
+            print(f"Alerts: {alerts}")
+
+            return processed_frame, alerts, total_detections, process_time
+
+        except Exception as e:
+            print(f"Eye tracking error: {str(e)}")
+            return frame, [], 0, 0.0
