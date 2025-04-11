@@ -11,7 +11,7 @@ class EyeTracker:
     def __init__(self):
         # Model parameters
         self.IMG_SIZE = (56, 64)
-        self.CLASS_LABELS = ['center', 'right', 'left']
+        self.CLASS_LABELS = ['center', 'left', 'right']
         self.last_timestamp = time.time()
         self.last_direction = "center"
         self.direction_start_time = time.time()
@@ -19,7 +19,7 @@ class EyeTracker:
 
         # Initialize single landmarker for all modes
         self.face_landmarker = self._init_mediapipe()
-        self.eye_model = load_model('object_cheating/models/eye_model.h5')
+        self.eye_model = load_model('object_cheating/models/eye_modelv3.h5')
 
     def _init_mediapipe(self) -> vision.FaceLandmarker:
         """Initialize MediaPipe Face Landmarker"""
