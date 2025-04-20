@@ -29,6 +29,12 @@ class CameraState(ThresholdState):
     highest_confidence_class: str = "N/A"
     highest_confidence: float = 0.0
     
+    # Coordinate panel
+    highest_conf_xmin: int = 0
+    highest_conf_ymin: int = 0
+    highest_conf_xmax: int = 0
+    highest_conf_ymax: int = 0
+    
     @rx.event
     def prev_model(self):
         if self.active_model > 1:
@@ -204,6 +210,7 @@ class CameraState(ThresholdState):
         total_detections = 0
         highest_conf = 0.0
         highest_class = "N/A"
+        coords = {"xmin": 0, "ymin": 0, "xmax": 0, "ymax": 0}
         # First pass: Count all detections and draw boxes
         for result in results:
             boxes = result.boxes
@@ -218,6 +225,10 @@ class CameraState(ThresholdState):
                 if conf > highest_conf:
                     highest_conf = conf
                     highest_class = class_name
+                    coords["xmin"] = int(x1)
+                    coords["ymin"] = int(y1)
+                    coords["xmax"] = int(x2)
+                    coords["ymax"] = int(y2)
                 
                 # Draw detection regardless of selected target
                 label = f"{class_name} {conf:.2f}"
@@ -242,7 +253,7 @@ class CameraState(ThresholdState):
         print(total_detections)
         print(process_time)
         
-        return processed_frame, total_detections, process_time, highest_class, round(highest_conf * 100)
+        return processed_frame, total_detections, process_time, highest_class, round(highest_conf * 100), coords
     
     @rx.event
     async def handle_image_upload(self, files: list[rx.UploadFile]):
@@ -307,7 +318,7 @@ class CameraState(ThresholdState):
                 if self.active_model == 1:
                     # Model 1: YOLOv8 for classroom behavior
                     yolo_model = self.get_yolo_model()
-                    processed_frame, total_detections, process_time, highest_class, highest_conf = self._apply_yolo_prediction(yolo_model, frame, True)
+                    processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model, frame, True)
                     
                     # Update stats inside context manager
                     async with self:
@@ -315,11 +326,15 @@ class CameraState(ThresholdState):
                         self.processing_time = process_time
                         self.highest_confidence_class = highest_class
                         self.highest_confidence = highest_conf
+                        self.highest_conf_xmin = coords["xmin"]
+                        self.highest_conf_ymin = coords["ymin"]
+                        self.highest_conf_xmax = coords["xmax"]
+                        self.highest_conf_ymax = coords["ymax"]
                 
                 elif self.active_model == 2:
                     # Model 2: YOLOv8 for cheating detection
                     yolo_model = self.get_yolo_model_2()
-                    processed_frame, total_detections, process_time, highest_class, highest_conf = self._apply_yolo_prediction(yolo_model, frame, False)
+                    processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model, frame, False)
                     
                     # Update stats inside context manager
                     async with self:
@@ -327,12 +342,16 @@ class CameraState(ThresholdState):
                         self.processing_time = process_time
                         self.highest_confidence_class = highest_class
                         self.highest_confidence = highest_conf
+                        self.highest_conf_xmin = coords["xmin"]
+                        self.highest_conf_ymin = coords["ymin"]
+                        self.highest_conf_xmax = coords["xmax"]
+                        self.highest_conf_ymax = coords["ymax"]
                 
                 elif self.active_model == 3:
                 # Model 3: Eye tracking with current thresholds
                     eye_tracker = EyeTracker()
                     try:
-                        processed_frame, alerts, total_detections, process_time, highest_class, highest_conf = eye_tracker.process_eye_detections(
+                        processed_frame, alerts, total_detections, process_time, highest_class, highest_conf, coords = eye_tracker.process_eye_detections(
                             processed_frame,
                             0,
                             0,
@@ -348,6 +367,10 @@ class CameraState(ThresholdState):
                             self.processing_time = process_time
                             self.highest_confidence_class = highest_class
                             self.highest_confidence = highest_conf 
+                            self.highest_conf_xmin = coords["xmin"]
+                            self.highest_conf_ymin = coords["ymin"]
+                            self.highest_conf_xmax = coords["xmax"]
+                            self.highest_conf_ymax = coords["ymax"]
                             if alerts:
                                 self.eye_alerts = alerts
                     except Exception as e:
@@ -437,7 +460,7 @@ class CameraState(ThresholdState):
                         # Model 1: YOLOv8 for classroom behavior
                         if yolo_model is None:
                             yolo_model = self.get_yolo_model()
-                        processed_frame, total_detections, process_time, highest_class, highest_conf = self._apply_yolo_prediction(yolo_model, frame, True)
+                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model, frame, True)
                             
                         # Calculate FPS
                         current_time = time.time()
@@ -452,6 +475,10 @@ class CameraState(ThresholdState):
                             self.fps = current_fps  
                             self.highest_confidence_class = highest_class
                             self.highest_confidence = highest_conf
+                            self.highest_conf_xmin = coords["xmin"]
+                            self.highest_conf_ymin = coords["ymin"]
+                            self.highest_conf_xmax = coords["xmax"]
+                            self.highest_conf_ymax = coords["ymax"]
                             
                         last_time = current_time
 
@@ -459,7 +486,7 @@ class CameraState(ThresholdState):
                         # Model 2: YOLOv8 for cheating detection
                         if yolo_model_2 is None:
                             yolo_model_2 = self.get_yolo_model_2()
-                        processed_frame, total_detections, process_time, highest_class, highest_conf = self._apply_yolo_prediction(yolo_model_2, frame, False)
+                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model_2, frame, False)
                             
                         # Calculate FPS
                         current_time = time.time()
@@ -474,6 +501,10 @@ class CameraState(ThresholdState):
                             self.fps = current_fps
                             self.highest_confidence_class = highest_class
                             self.highest_confidence = highest_conf
+                            self.highest_conf_xmin = coords["xmin"]
+                            self.highest_conf_ymin = coords["ymin"]
+                            self.highest_conf_xmax = coords["xmax"]
+                            self.highest_conf_ymax = coords["ymax"]
                             
                         last_time = current_time
 
@@ -483,7 +514,7 @@ class CameraState(ThresholdState):
                             eye_tracker = EyeTracker()
                         
                         try:
-                            processed_frame, alerts, total_detections, process_time, highest_class, highest_conf = eye_tracker.process_eye_detections(
+                            processed_frame, alerts, total_detections, process_time, highest_class, highest_conf, coords = eye_tracker.process_eye_detections(
                                 processed_frame,
                                 local_eye_alert_counter,
                                 local_eye_frame_counter,
@@ -505,6 +536,10 @@ class CameraState(ThresholdState):
                                 self.fps = current_fps
                                 self.highest_confidence_class = highest_class
                                 self.highest_confidence = highest_conf
+                                self.highest_conf_xmin = coords["xmin"]
+                                self.highest_conf_ymin = coords["ymin"]
+                                self.highest_conf_xmax = coords["xmax"]
+                                self.highest_conf_ymax = coords["ymax"]
                                 if alerts:
                                     self.eye_alerts = alerts
                                     self.eye_alert_counter = local_eye_alert_counter
@@ -612,7 +647,7 @@ class CameraState(ThresholdState):
                         # Model 1: YOLOv8 for classroom behavior
                         if yolo_model is None:
                             yolo_model = self.get_yolo_model()
-                        processed_frame, total_detections, process_time, highest_class, highest_conf = self._apply_yolo_prediction(yolo_model, frame, True)
+                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model, frame, True)
                             
                         # Calculate FPS
                         current_time = time.time()
@@ -627,6 +662,10 @@ class CameraState(ThresholdState):
                             self.fps = current_fps 
                             self.highest_confidence_class = highest_class
                             self.highest_confidence = highest_conf
+                            self.highest_conf_xmin = coords["xmin"]
+                            self.highest_conf_ymin = coords["ymin"]
+                            self.highest_conf_xmax = coords["xmax"]
+                            self.highest_conf_ymax = coords["ymax"]
                             
                         last_time = current_time
 
@@ -634,7 +673,7 @@ class CameraState(ThresholdState):
                         # Model 2: YOLOv8 for cheating detection
                         if yolo_model_2 is None:
                             yolo_model_2 = self.get_yolo_model_2()
-                        processed_frame, total_detections, process_time, highest_class, highest_conf = self._apply_yolo_prediction(yolo_model_2, frame, False)
+                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model_2, frame, False)
                             
                         # Calculate FPS
                         current_time = time.time()
@@ -649,6 +688,10 @@ class CameraState(ThresholdState):
                             self.fps = current_fps 
                             self.highest_confidence_class = highest_class
                             self.highest_confidence = highest_conf
+                            self.highest_conf_xmin = coords["xmin"]
+                            self.highest_conf_ymin = coords["ymin"]
+                            self.highest_conf_xmax = coords["xmax"]
+                            self.highest_conf_ymax = coords["ymax"]
                             
                         last_time = current_time
 
@@ -658,7 +701,7 @@ class CameraState(ThresholdState):
                             eye_tracker = EyeTracker()
                         
                         try:
-                            processed_frame, alerts, total_detections, process_time, highest_class, highest_conf = eye_tracker.process_eye_detections(
+                            processed_frame, alerts, total_detections, process_time, highest_class, highest_conf, coords = eye_tracker.process_eye_detections(
                                 processed_frame,
                                 local_eye_alert_counter,
                                 local_eye_frame_counter,
@@ -680,6 +723,10 @@ class CameraState(ThresholdState):
                                 self.fps = current_fps
                                 self.highest_confidence_class = highest_class
                                 self.highest_confidence = highest_conf
+                                self.highest_conf_xmin = coords["xmin"]
+                                self.highest_conf_ymin = coords["ymin"]
+                                self.highest_conf_xmax = coords["xmax"]
+                                self.highest_conf_ymax = coords["ymax"]
                                 if alerts:
                                     self.eye_alerts = alerts
                                     self.eye_alert_counter = local_eye_alert_counter

@@ -243,10 +243,11 @@ class EyeTracker:
             is_video: Boolean indicating if the input is a video
             
         Returns:
-            tuple: (processed_frame, alerts, total_detections, process_time, highest_class, highest_conf)
+            tuple: (processed_frame, alerts, total_detections, process_time, highest_class, highest_conf, coords)
         """
         start_time = time.time()
         total_detections = 0
+        coords = {"xmin": 0, "ymin": 0, "xmax": 0, "ymax": 0}
         
         try:
             processed_frame, alerts, alert_counter, frame_counter, left_direction, left_conf, right_direction, right_conf = self.process_frame(
@@ -264,33 +265,68 @@ class EyeTracker:
             if right_conf > cnn_threshold and right_direction != "closed":
                 total_detections += 1
                 
+            h, w = frame.shape[:2]
+            landmarks = self.face_landmarker.detect_for_video(
+                mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)),
+                int(time.time() * 1000)
+            ).face_landmarks[0]
+
+            # Get coordinates for both eyes
+            left_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
+                                for i in [33, 133, 159, 145]], dtype=np.int32)
+            right_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
+                                for i in [362, 263, 386, 374]], dtype=np.int32)
+            
+            left_rect = cv2.boundingRect(left_points)
+            right_rect = cv2.boundingRect(right_points)
+                
             highest_class = "N/A"
             highest_conf = 0.0
             
-            # Prioritaskan hanya jika kedua mata tertutup
+            # Determine which eye's coordinates to use based on confidence
             if left_direction == "closed" and right_direction == "closed":
                 highest_class = "closed"
                 highest_conf = 1.0 
                 total_detections=2
+                # Use combined eye area for closed eyes
+                coords["xmin"] = min(left_rect[0], right_rect[0])
+                coords["ymin"] = min(left_rect[1], right_rect[1])
+                coords["xmax"] = max(left_rect[0] + left_rect[2], right_rect[0] + right_rect[2])
+                coords["ymax"] = max(left_rect[1] + left_rect[3], right_rect[1] + right_rect[3])
             else:
-                # Jika salah satu mata terbuka, gunakan kelas dari mata yang terbuka
                 if left_direction != "closed" and right_direction != "closed":
-                    # Kedua mata terbuka, bandingkan confidence
+                    # Both eyes open - use coordinates of eye with higher confidence
                     if left_conf >= right_conf:
                         highest_class = left_direction
                         highest_conf = left_conf
+                        coords["xmin"] = left_rect[0]
+                        coords["ymin"] = left_rect[1]
+                        coords["xmax"] = left_rect[0] + left_rect[2]
+                        coords["ymax"] = left_rect[1] + left_rect[3]
                     else:
                         highest_class = right_direction
                         highest_conf = right_conf
+                        coords["xmin"] = right_rect[0]
+                        coords["ymin"] = right_rect[1]
+                        coords["xmax"] = right_rect[0] + right_rect[2]
+                        coords["ymax"] = right_rect[1] + right_rect[3]
                 elif left_direction != "closed":
-                    # Hanya mata kiri yang terbuka
+                    # Only left eye open
                     highest_class = left_direction
                     highest_conf = left_conf
+                    coords["xmin"] = left_rect[0]
+                    coords["ymin"] = left_rect[1]
+                    coords["xmax"] = left_rect[0] + left_rect[2]
+                    coords["ymax"] = left_rect[1] + left_rect[3]
                     total_detections += 1
                 elif right_direction != "closed":
-                    # Hanya mata kanan yang terbuka
+                    # Only right eye open
                     highest_class = right_direction
                     highest_conf = right_conf
+                    coords["xmin"] = right_rect[0]
+                    coords["ymin"] = right_rect[1]
+                    coords["xmax"] = right_rect[0] + right_rect[2]
+                    coords["ymax"] = right_rect[1] + right_rect[3]
                     total_detections += 1
 
             # Runtime
@@ -304,8 +340,8 @@ class EyeTracker:
 
             highest_conf = round(highest_conf * 100)
 
-            return processed_frame, alerts, total_detections, process_time, highest_class, highest_conf
+            return processed_frame, alerts, total_detections, process_time, highest_class, highest_conf, coords
 
         except Exception as e:
             print(f"Eye tracking error: {str(e)}")
-            return frame, [], 0, 0.0, "N/A", 0
+            return frame, [], 0, 0.0, "N/A", 0, coords
