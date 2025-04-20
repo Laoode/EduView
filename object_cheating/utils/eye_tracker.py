@@ -243,7 +243,7 @@ class EyeTracker:
             is_video: Boolean indicating if the input is a video
             
         Returns:
-            tuple: (processed_frame, alerts, total_detections, process_time)
+            tuple: (processed_frame, alerts, total_detections, process_time, highest_class, highest_conf)
         """
         start_time = time.time()
         total_detections = 0
@@ -263,6 +263,35 @@ class EyeTracker:
                 total_detections += 1
             if right_conf > cnn_threshold and right_direction != "closed":
                 total_detections += 1
+                
+            highest_class = "N/A"
+            highest_conf = 0.0
+            
+            # Prioritaskan hanya jika kedua mata tertutup
+            if left_direction == "closed" and right_direction == "closed":
+                highest_class = "closed"
+                highest_conf = 1.0 
+                total_detections=2
+            else:
+                # Jika salah satu mata terbuka, gunakan kelas dari mata yang terbuka
+                if left_direction != "closed" and right_direction != "closed":
+                    # Kedua mata terbuka, bandingkan confidence
+                    if left_conf >= right_conf:
+                        highest_class = left_direction
+                        highest_conf = left_conf
+                    else:
+                        highest_class = right_direction
+                        highest_conf = right_conf
+                elif left_direction != "closed":
+                    # Hanya mata kiri yang terbuka
+                    highest_class = left_direction
+                    highest_conf = left_conf
+                    total_detections += 1
+                elif right_direction != "closed":
+                    # Hanya mata kanan yang terbuka
+                    highest_class = right_direction
+                    highest_conf = right_conf
+                    total_detections += 1
 
             # Runtime
             end_time = time.time()
@@ -271,9 +300,12 @@ class EyeTracker:
             # Debugging output
             print(f"Total detections: {total_detections}")
             print(f"Alerts: {alerts}")
+            print(f"Highest class: {highest_class}, Highest confidence: {highest_conf}")
 
-            return processed_frame, alerts, total_detections, process_time
+            highest_conf = round(highest_conf * 100)
+
+            return processed_frame, alerts, total_detections, process_time, highest_class, highest_conf
 
         except Exception as e:
             print(f"Eye tracking error: {str(e)}")
-            return frame, [], 0, 0.0
+            return frame, [], 0, 0.0, "N/A", 0
