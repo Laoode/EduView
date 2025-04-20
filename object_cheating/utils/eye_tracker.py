@@ -10,16 +10,17 @@ import time
 class EyeTracker:
     def __init__(self):
         # Model parameters
-        self.IMG_SIZE = (56, 64)
-        self.CLASS_LABELS = ['center', 'left', 'right']
+        self.IMG_SIZE = (56, 64) 
+        self.CLASS_LABELS = ['center', 'left', 'right']  
         self.last_timestamp = time.time()
         self.last_direction = "center"
         self.direction_start_time = time.time()
         self.alert_level = 0
+        self.EYE_CLOSURE_THRESHOLD = 0.009 
 
         # Initialize single landmarker for all modes
         self.face_landmarker = self._init_mediapipe()
-        self.eye_model = load_model('object_cheating/models/eye_modelv3.h5')
+        self.eye_model = load_model('object_cheating/models/eye_modelv3.h5') 
 
     def _init_mediapipe(self) -> vision.FaceLandmarker:
         """Initialize MediaPipe Face Landmarker"""
@@ -42,7 +43,6 @@ class EyeTracker:
         current_time = time.time()
         processed_frame = frame.copy()
         
-        # Inisialisasi nilai default untuk arah dan kepercayaan
         left_direction, left_conf = "center", 0.0
         right_direction, right_conf = "center", 0.0
         
@@ -64,12 +64,13 @@ class EyeTracker:
                 left_direction, left_conf = left_result
                 right_direction, right_conf = right_result
                 
-                # Log untuk debugging
+                # Log debugging
                 print(f"Left eye: direction={left_direction}, confidence={left_conf}")
                 print(f"Right eye: direction={right_direction}, confidence={right_conf}")
                 
-                # Check if either eye has sufficient confidence
-                if left_conf > cnn_threshold or right_conf > cnn_threshold:
+                # Check if either eye is open and has sufficient confidence for gaze detection
+                if (left_conf > cnn_threshold and left_direction != "closed") or \
+                   (right_conf > cnn_threshold and right_direction != "closed"):
                     current_direction = "center"
                     if left_direction in ["left", "right"] or right_direction in ["left", "right"]:
                         current_direction = "side"
@@ -104,15 +105,26 @@ class EyeTracker:
                 color = [(0, 252, 124),  # Lawn green for normal
                         (0, 165, 255),  # Orange for suspicious
                         (71, 99, 255)][self.alert_level]  # Tomato for cheating
+                closed_color = (128, 128, 128)  # Gray for closed eyes
                 
                 # Draw eye boxes and labels
                 h, w = frame.shape[:2]
                 
-                # Draw left eye only if detected with sufficient confidence
-                if left_conf > cnn_threshold:
-                    left_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
-                                        for i in [33, 133, 159, 145]], dtype=np.int32)
-                    left_rect = cv2.boundingRect(left_points)
+                # Draw left eye
+                left_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
+                                    for i in [33, 133, 159, 145]], dtype=np.int32)
+                left_rect = cv2.boundingRect(left_points)
+                if left_direction == "closed":
+                    # Draw bounding box for closed eye with gray color
+                    cv2.rectangle(processed_frame, 
+                                (left_rect[0], left_rect[1]), 
+                                (left_rect[0] + left_rect[2], left_rect[1] + left_rect[3]), 
+                                closed_color, 2)
+                    cv2.putText(processed_frame, "closed", 
+                               (left_rect[0], left_rect[1] - 10),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, closed_color, 2)
+                elif left_conf > cnn_threshold:
+                    # Draw bounding box for open eye with gaze direction
                     cv2.rectangle(processed_frame, 
                                 (left_rect[0], left_rect[1]), 
                                 (left_rect[0] + left_rect[2], left_rect[1] + left_rect[3]), 
@@ -121,11 +133,21 @@ class EyeTracker:
                                (left_rect[0], left_rect[1] - 10),
                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                 
-                # Draw right eye only if detected with sufficient confidence
-                if right_conf > cnn_threshold:
-                    right_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
-                                         for i in [362, 263, 386, 374]], dtype=np.int32)
-                    right_rect = cv2.boundingRect(right_points)
+                # Draw right eye
+                right_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
+                                     for i in [362, 263, 386, 374]], dtype=np.int32)
+                right_rect = cv2.boundingRect(right_points)
+                if right_direction == "closed":
+                    # Draw bounding box for closed eye with gray color
+                    cv2.rectangle(processed_frame, 
+                                (right_rect[0], right_rect[1]), 
+                                (right_rect[0] + right_rect[2], right_rect[1] + right_rect[3]), 
+                                closed_color, 2)
+                    cv2.putText(processed_frame, "closed", 
+                               (right_rect[0], right_rect[1] - 10),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, closed_color, 2)
+                elif right_conf > cnn_threshold:
+                    # Draw bounding box for open eye with gaze direction
                     cv2.rectangle(processed_frame, 
                                 (right_rect[0], right_rect[1]), 
                                 (right_rect[0] + right_rect[2], right_rect[1] + right_rect[3]), 
@@ -154,30 +176,56 @@ class EyeTracker:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             h, w = gray.shape
             
+            # Get eye points from landmarks
             eye_points = np.array([
-                [int(landmarks[i].x * w), int(landmarks[i].y * h)] 
+                [landmarks[i].x, landmarks[i].y]  # Use normalized coordinates
+                for i in indices
+            ], dtype=np.float32)
+            
+            # Check if the eye is closed using the vertical distance between upper and lower eyelid
+            # For left eye: indices 159 (upper) and 145 (lower)
+            # For right eye: indices 386 (upper) and 374 (lower)
+            if indices == [33, 133, 159, 145]:  # Left eye
+                upper_idx, lower_idx = 159, 145
+            else:  # Right eye
+                upper_idx, lower_idx = 386, 374
+            
+            # Calculate vertical distance between upper and lower eyelid (normalized)
+            eye_height = abs(landmarks[upper_idx].y - landmarks[lower_idx].y)
+            
+            # If the eye height is below the threshold, consider the eye closed
+            if eye_height < self.EYE_CLOSURE_THRESHOLD:
+                return "closed", 1.0  # Confidence set to 1.0 for rule-based detection
+            
+            # If the eye is open, proceed with gaze direction detection
+            # Convert normalized coordinates to pixel coordinates for cropping
+            eye_points_pixel = np.array([
+                [int(landmarks[i].x * w), int(landmarks[i].y * h)]
                 for i in indices
             ], dtype=np.int64)
             
-            x1, y1 = np.min(eye_points, axis=0)
-            x2, y2 = np.max(eye_points, axis=0)
+            x1, y1 = np.min(eye_points_pixel, axis=0)
+            x2, y2 = np.max(eye_points_pixel, axis=0)
+            
             eye_img = gray[y1:y2, x1:x2]
             
             if eye_img.size == 0:
-                return "center", 0.0
+                return "closed", 0.0  # If eye region is invalid, treat as closed
                 
+            # Resize eye image for gaze detection
             processed = cv2.resize(eye_img, (self.IMG_SIZE[1], self.IMG_SIZE[0]))
             processed = processed.reshape((1, *self.IMG_SIZE, 1)).astype(np.float32) / 255.0
             
-            prediction = self.eye_model.predict(processed, verbose=0)[0]
-            direction = self.CLASS_LABELS[np.argmax(prediction)]
-            confidence = float(np.max(prediction))
+            # Predict gaze direction
+            gaze_pred = self.eye_model.predict(processed, verbose=0)[0]
+            direction = self.CLASS_LABELS[np.argmax(gaze_pred)]
+            confidence = float(np.max(gaze_pred))
             
             return direction, confidence
             
         except Exception as e:
             print(f"Error in eye processing: {str(e)}")
-            return "center", 0.0
+            return "closed", 0.0
 
     def process_eye_detections(self, frame, alert_counter, frame_counter, 
                               cnn_threshold=0.6, movement_threshold=0.3, 
@@ -201,7 +249,6 @@ class EyeTracker:
         total_detections = 0
         
         try:
-            # Proses frame menggunakan fungsi yang sudah ada
             processed_frame, alerts, alert_counter, frame_counter, left_direction, left_conf, right_direction, right_conf = self.process_frame(
                 frame,
                 alert_counter,
@@ -212,13 +259,12 @@ class EyeTracker:
                 is_video=is_video
             )
 
-            # Tambah deteksi jika mata terdeteksi (confidence cukup, termasuk arah "center")
-            if left_conf > cnn_threshold:
+            if left_conf > cnn_threshold and left_direction != "closed":
                 total_detections += 1
-            if right_conf > cnn_threshold:
+            if right_conf > cnn_threshold and right_direction != "closed":
                 total_detections += 1
 
-            # Hitung runtime
+            # Runtime
             end_time = time.time()
             process_time = round((end_time - start_time), 1)
 
