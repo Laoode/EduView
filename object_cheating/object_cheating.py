@@ -5,7 +5,7 @@ from object_cheating.components.treshold import threshold
 from object_cheating.components.stats_panel import stats_panel
 from object_cheating.components.behavior_panel import behavior_panel
 from object_cheating.components.coordinate_panel import coordinate_panel
-from object_cheating.components.table import _tables_v2
+from object_cheating.components.table import tables_v2
 from object_cheating.components.input_panel import input_panel
 from object_cheating.components.warning_dialog import warning_dialog
 from object_cheating.components.delete_dialog import delete_dialog
@@ -30,7 +30,7 @@ def index() -> rx.Component:
                             class_name="bg-[#ffec99] p-4 rounded-lg shadow-md space-y-4"
                         ),
                         rx.el.div(
-                            _tables_v2(),
+                            tables_v2(),
                             class_name="bg-[#ffec99] p-4 rounded-lg shadow-md space-y-4"
                         ),
                         class_name="w-2/3 pr-4 space-y-4"  # Added space-y-4 for spacing between sections

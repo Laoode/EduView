@@ -6,6 +6,8 @@ import numpy as np
 import asyncio
 import os
 import time
+from datetime import datetime
+from typing import List, Dict
 from object_cheating.utils.eye_tracker import EyeTracker
 from ultralytics import YOLO
 from object_cheating.states.threshold_state import ThresholdState
@@ -34,6 +36,29 @@ class CameraState(ThresholdState):
     highest_conf_ymin: int = 0
     highest_conf_xmax: int = 0
     highest_conf_ymax: int = 0
+    
+    # Table panel
+    table_data: List[Dict[str, str]] = []
+    table_entry_counter: int = 0
+    
+    # Add table color mapping
+    table_color_map: Dict[str, str] = {
+        "cheating": "tomato",
+        "Look Around": "violet",
+        "Normal": "grass",
+        "normal": "grass",
+        "Bend Over The Desk": "cyan",
+        "Hand Under Table": "indigo",
+        "Stand Up": "sky",
+        "Wave": "pink",
+    }
+    
+    # Constants for frame capture
+    FRAME_CAPTURE_INTERVAL = 10  # Capture every 10th frame
+    MAX_SAVES_PER_MINUTE = 6  # Maximum 6 saves per minute (1 every 10 seconds)
+    
+    # Add timestamp tracking for rate limiting
+    _last_save_time: float = 0
     
     @rx.event
     def prev_model(self):
@@ -211,6 +236,7 @@ class CameraState(ThresholdState):
         highest_conf = 0.0
         highest_class = "N/A"
         coords = {"xmin": 0, "ymin": 0, "xmax": 0, "ymax": 0}
+        all_detections = []
         # First pass: Count all detections and draw boxes
         for result in results:
             boxes = result.boxes
@@ -220,6 +246,19 @@ class CameraState(ThresholdState):
                 cls = box.cls[0]
                 class_name = model.names[int(cls)]
                 total_detections += 1
+                
+                # Simpan setiap deteksi
+                detection = {
+                    "class_name": class_name,
+                    "conf": conf,
+                    "coords": {
+                        "xmin": int(x1),
+                        "ymin": int(y1),
+                        "xmax": int(x2),
+                        "ymax": int(y2),
+                    }
+                }
+                all_detections.append(detection)
                 
                 # Track highest confidence detection
                 if conf > highest_conf:
@@ -253,7 +292,92 @@ class CameraState(ThresholdState):
         print(total_detections)
         print(process_time)
         
-        return processed_frame, total_detections, process_time, highest_class, round(highest_conf * 100), coords
+        return processed_frame, total_detections, process_time, highest_class, round(highest_conf * 100), coords, all_detections
+    
+    def add_table_entry(self, location_file: str, behaviour: str, coordinate: str):
+        """Add a new entry to the table with an incremented number."""
+        self.table_entry_counter += 1
+        new_entry = {
+            "no": str(self.table_entry_counter),
+            "location_file": location_file,
+            "behaviour": behaviour,
+            "coordinate": coordinate,
+        }
+        self.table_data.insert(0, new_entry)
+        print(f"Added entry to table_data: {new_entry}")
+    
+    async def _save_detection_image(self, frame, model_num: int, detections: list):
+        """Save each detected bounding box as a separate cropped image."""
+        try:
+            # Create directory structure: detections/YYYY-MM-DD/Model_X/
+            current_date = datetime.now().strftime("%Y-%m-%d")
+            model_folder = f"Model_{model_num}"
+            base_dir = os.path.join("detections", current_date, model_folder)
+            os.makedirs(base_dir, exist_ok=True)
+            
+            # Generate unique timestamp for this batch of detections
+            timestamp = datetime.now().strftime("%H-%M-%S")
+            base_filename = f"{timestamp}.jpg"
+            
+            # Process each detection
+            for idx, detection in enumerate(detections):
+                class_name = detection["class_name"]
+                coords = detection["coords"]
+                x1, y1, x2, y2 = coords["xmin"], coords["ymin"], coords["xmax"], coords["ymax"]
+                
+                # Ensure coordinates are within image bounds
+                height, width = frame.shape[:2]
+                x1 = max(0, x1)
+                y1 = max(0, y1)
+                x2 = min(width, x2)
+                y2 = min(height, y2)
+                
+                if x2 <= x1 or y2 <= y1:
+                    print(f"Invalid bounding box for {class_name}: skipping save")
+                    continue
+                
+                # Crop the bounding box area
+                cropped_image = frame[y1:y2, x1:x2]
+                
+                # Generate unique filename for each detection
+                filename = f"{timestamp}_{idx}.jpg"
+                filepath = os.path.join(base_dir, filename)
+                
+                # Save the cropped image
+                cv2.imwrite(filepath, cropped_image)
+                print(f"Saved cropped detection image to: {filepath}")
+                
+                # Add entry to table within context manager
+                coordinate = f"[{x1},{y1},{x2},{y2}]"
+                async with self:
+                    self.table_entry_counter += 1
+                    new_entry = {
+                        "no": str(self.table_entry_counter),  # Start numbering from 1
+                        "location_file": os.path.join("detections", current_date, model_folder, filename),
+                        "behaviour": class_name,
+                        "coordinate": coordinate,
+                    }
+                    # Append to end instead of insert at beginning
+                    self.table_data.append(new_entry)
+                    print(f"Added entry to table_data: {new_entry}")
+                    
+        except Exception as e:
+            print(f"Error in _save_detection_image: {str(e)}")
+            
+    async def _should_save_detection(self) -> bool:
+        """Check if we should save based on rate limiting."""
+        current_time = time.time()
+        
+        # Check if enough time has passed since last save (rate limiting)
+        if current_time - self._last_save_time < (60 / self.MAX_SAVES_PER_MINUTE):
+            print(f"Rate limiting: Not saving. Time since last save: {current_time - self._last_save_time:.2f} seconds")
+            return False
+            
+        async with self:
+            self._last_save_time = current_time
+            print(f"Updated last save time: {self._last_save_time}")
+            
+        return True
     
     @rx.event
     async def handle_image_upload(self, files: list[rx.UploadFile]):
@@ -318,8 +442,11 @@ class CameraState(ThresholdState):
                 if self.active_model == 1:
                     # Model 1: YOLOv8 for classroom behavior
                     yolo_model = self.get_yolo_model()
-                    processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model, frame, True)
+                    processed_frame, total_detections, process_time, highest_class, highest_conf, coords, all_detections = self._apply_yolo_prediction(yolo_model, frame, True)
                     
+                    if total_detections > 0:
+                        await self._save_detection_image(frame, self.active_model, all_detections)
+      
                     # Update stats inside context manager
                     async with self:
                         self.detection_count = total_detections
@@ -334,7 +461,10 @@ class CameraState(ThresholdState):
                 elif self.active_model == 2:
                     # Model 2: YOLOv8 for cheating detection
                     yolo_model = self.get_yolo_model_2()
-                    processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model, frame, False)
+                    processed_frame, total_detections, process_time, highest_class, highest_conf, coords, all_detections = self._apply_yolo_prediction(yolo_model, frame, False)
+                    
+                    if total_detections > 0:
+                        await self._save_detection_image(frame, self.active_model, all_detections)
                     
                     # Update stats inside context manager
                     async with self:
@@ -437,7 +567,8 @@ class CameraState(ThresholdState):
             eye_tracker = None
             yolo_model = None
             yolo_model_2 = None
-            frame_counter = 0
+            frame_count = 0
+            all_detections = []
             local_eye_alert_counter = 0
             local_eye_frame_counter = 0
             last_time = time.time()
@@ -451,7 +582,8 @@ class CameraState(ThresholdState):
                 if not ret:  # Reset video when it ends
                     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     continue
-
+                
+                frame_count += 1
                 processed_frame = frame.copy()
 
                 # Process detections if enabled
@@ -460,15 +592,23 @@ class CameraState(ThresholdState):
                         # Model 1: YOLOv8 for classroom behavior
                         if yolo_model is None:
                             yolo_model = self.get_yolo_model()
-                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model, frame, True)
+                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords, all_detections = self._apply_yolo_prediction(yolo_model, frame, True)
                             
+                        # Only save on interval frames and with rate limiting
+                        if total_detections > 0 and frame_count % self.FRAME_CAPTURE_INTERVAL == 0:
+                            if await self._should_save_detection():
+                                try:
+                                    await self._save_detection_image(frame, self.active_model, all_detections)
+                                except Exception as e:
+                                    print(f"Error saving detection: {str(e)}")
+                                
                         # Calculate FPS
                         current_time = time.time()
                         time_diff = current_time - last_time
-                        if time_diff > 0:
-                            current_fps = 1.0 / time_diff
-                            current_fps = round(current_fps, 1)
-                            
+                        current_fps = round(1.0 / time_diff, 1) if time_diff > 0 else 0.0
+                        last_time = current_time
+
+                        # Update stats
                         async with self:
                             self.detection_count = total_detections
                             self.processing_time = process_time
@@ -479,22 +619,28 @@ class CameraState(ThresholdState):
                             self.highest_conf_ymin = coords["ymin"]
                             self.highest_conf_xmax = coords["xmax"]
                             self.highest_conf_ymax = coords["ymax"]
-                            
-                        last_time = current_time
 
                     elif self.active_model == 2:
                         # Model 2: YOLOv8 for cheating detection
                         if yolo_model_2 is None:
                             yolo_model_2 = self.get_yolo_model_2()
-                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model_2, frame, False)
-                            
+                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords, all_detections = self._apply_yolo_prediction(yolo_model_2, frame, False)
+
+                        # Only save on interval frames and with rate limiting
+                        if total_detections > 0 and frame_count % self.FRAME_CAPTURE_INTERVAL == 0:
+                            if await self._should_save_detection():
+                                try:
+                                    await self._save_detection_image(frame, self.active_model, all_detections)
+                                except Exception as e:
+                                    print(f"Error saving detection: {str(e)}")
+                                                            
                         # Calculate FPS
                         current_time = time.time()
                         time_diff = current_time - last_time
-                        if time_diff > 0:
-                            current_fps = 1.0 / time_diff
-                            current_fps = round(current_fps, 1)
-                            
+                        current_fps = round(1.0 / time_diff, 1) if time_diff > 0 else 0.0
+                        last_time = current_time
+
+                        # Update stats
                         async with self:
                             self.detection_count = total_detections
                             self.processing_time = process_time
@@ -505,8 +651,6 @@ class CameraState(ThresholdState):
                             self.highest_conf_ymin = coords["ymin"]
                             self.highest_conf_xmax = coords["xmax"]
                             self.highest_conf_ymax = coords["ymax"]
-                            
-                        last_time = current_time
 
                     elif self.active_model == 3:
                         # Model 3: Eye tracking
@@ -521,14 +665,15 @@ class CameraState(ThresholdState):
                                 cnn_threshold=self.confidence_threshold,
                                 movement_threshold=self.iou_threshold,
                                 duration_threshold=5.0,
-                                is_video=True  # Specify video mode
+                                is_video=True
                             )
                             
                             # Hitung FPS
                             current_time = time.time()
                             time_diff = current_time - last_time
                             current_fps = round(1.0 / time_diff, 1) if time_diff > 0 else 0.0
-                            
+                            last_time = current_time
+
                             # Update stats
                             async with self:
                                 self.detection_count = total_detections
@@ -544,7 +689,6 @@ class CameraState(ThresholdState):
                                     self.eye_alerts = alerts
                                     self.eye_alert_counter = local_eye_alert_counter
                                     self.eye_frame_counter = local_eye_frame_counter
-                            last_time = current_time
                         except Exception as e:
                             print(f"Eye tracking error in video: {str(e)}")
                             async with self:
@@ -556,9 +700,10 @@ class CameraState(ThresholdState):
                 _, buffer = cv2.imencode('.jpg', processed_frame)
                 img_base64 = base64.b64encode(buffer).decode('utf-8')
                 
+                # Update display
                 async with self:
                     self.current_frame = f"data:image/jpeg;base64,{img_base64}"
-                
+
                 await asyncio.sleep(1/30)  # ~30 fps
 
             cap.release()
@@ -612,6 +757,7 @@ class CameraState(ThresholdState):
 
     @rx.event(background=True)
     async def process_camera_feed(self):
+        """Process and display webcam frames."""
         try:
             # Initialize camera
             cap = cv2.VideoCapture(0)
@@ -625,7 +771,8 @@ class CameraState(ThresholdState):
             eye_tracker = None
             yolo_model = None
             yolo_model_2 = None
-            frame_counter = 0
+            frame_count = 0
+            all_detections = []
             local_eye_alert_counter = 0
             local_eye_frame_counter = 0
             last_time = time.time()
@@ -639,6 +786,7 @@ class CameraState(ThresholdState):
                 if not ret:
                     break
                 
+                frame_count += 1
                 processed_frame = frame.copy()
 
                 # Process detections if enabled
@@ -647,15 +795,22 @@ class CameraState(ThresholdState):
                         # Model 1: YOLOv8 for classroom behavior
                         if yolo_model is None:
                             yolo_model = self.get_yolo_model()
-                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model, frame, True)
-                            
+                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords, all_detections = self._apply_yolo_prediction(yolo_model, frame, True)
+
+                        if total_detections > 0 and frame_count % self.FRAME_CAPTURE_INTERVAL == 0:
+                            if await self._should_save_detection():
+                                try:
+                                    await self._save_detection_image(frame, self.active_model, all_detections)
+                                except Exception as e:
+                                    print(f"Error saving detection: {str(e)}") 
+                                                               
                         # Calculate FPS
                         current_time = time.time()
                         time_diff = current_time - last_time
-                        if time_diff > 0:
-                            current_fps = 1.0 / time_diff
-                            current_fps = round(current_fps, 1)
-                            
+                        current_fps = round(1.0 / time_diff, 1) if time_diff > 0 else 0.0
+                        last_time = current_time
+
+                        # Update stats
                         async with self:
                             self.detection_count = total_detections
                             self.processing_time = process_time
@@ -666,22 +821,27 @@ class CameraState(ThresholdState):
                             self.highest_conf_ymin = coords["ymin"]
                             self.highest_conf_xmax = coords["xmax"]
                             self.highest_conf_ymax = coords["ymax"]
-                            
-                        last_time = current_time
 
                     elif self.active_model == 2:
                         # Model 2: YOLOv8 for cheating detection
                         if yolo_model_2 is None:
                             yolo_model_2 = self.get_yolo_model_2()
-                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords = self._apply_yolo_prediction(yolo_model_2, frame, False)
-                            
+                        processed_frame, total_detections, process_time, highest_class, highest_conf, coords, all_detections = self._apply_yolo_prediction(yolo_model_2, frame, False)
+                        
+                        if total_detections > 0 and frame_count % self.FRAME_CAPTURE_INTERVAL == 0:
+                            if await self._should_save_detection():
+                                try:
+                                    await self._save_detection_image(frame, self.active_model, all_detections)
+                                except Exception as e:
+                                    print(f"Error saving detection: {str(e)}")
+                                    
                         # Calculate FPS
                         current_time = time.time()
                         time_diff = current_time - last_time
-                        if time_diff > 0:
-                            current_fps = 1.0 / time_diff
-                            current_fps = round(current_fps, 1)
-                            
+                        current_fps = round(1.0 / time_diff, 1) if time_diff > 0 else 0.0
+                        last_time = current_time
+
+                        # Update stats
                         async with self:
                             self.detection_count = total_detections
                             self.processing_time = process_time
@@ -692,8 +852,6 @@ class CameraState(ThresholdState):
                             self.highest_conf_ymin = coords["ymin"]
                             self.highest_conf_xmax = coords["xmax"]
                             self.highest_conf_ymax = coords["ymax"]
-                            
-                        last_time = current_time
 
                     elif self.active_model == 3:
                         # Model 3: Eye tracking
@@ -708,14 +866,15 @@ class CameraState(ThresholdState):
                                 cnn_threshold=self.confidence_threshold,
                                 movement_threshold=self.iou_threshold,
                                 duration_threshold=5.0,
-                                is_video=True  # Specify video mode
+                                is_video=True
                             )
                             
                             # Hitung FPS
                             current_time = time.time()
                             time_diff = current_time - last_time
                             current_fps = round(1.0 / time_diff, 1) if time_diff > 0 else 0.0
-                            
+                            last_time = current_time
+
                             # Update stats
                             async with self:
                                 self.detection_count = total_detections
@@ -731,7 +890,6 @@ class CameraState(ThresholdState):
                                     self.eye_alerts = alerts
                                     self.eye_alert_counter = local_eye_alert_counter
                                     self.eye_frame_counter = local_eye_frame_counter
-                            last_time = current_time
                         except Exception as e:
                             print(f"Eye tracking error in video: {str(e)}")
                             async with self:
