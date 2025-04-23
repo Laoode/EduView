@@ -44,9 +44,12 @@ class CameraState(ThresholdState):
     # Add table color mapping
     table_color_map: Dict[str, str] = {
         "cheating": "tomato",
+        "left": "orange",
+        "right": "orange",
         "Look Around": "violet",
         "Normal": "grass",
         "normal": "grass",
+        "center": "green",
         "Bend Over The Desk": "cyan",
         "Hand Under Table": "indigo",
         "Stand Up": "sky",
@@ -490,6 +493,14 @@ class CameraState(ThresholdState):
                             duration_threshold=5.0,
                             is_video=False  # Specify image mode
                         )
+                        
+                        # Add automatic capture for eye tracking
+                        if total_detections > 0:
+                            all_detections = [{
+                                "class_name": highest_class,
+                                "coords": coords
+                            }]
+                            await self._save_detection_image(frame, self.active_model, all_detections)
 
                         # Update stats
                         async with self:
@@ -667,6 +678,18 @@ class CameraState(ThresholdState):
                                 duration_threshold=5.0,
                                 is_video=True
                             )
+                            
+                            # Add automatic capture for eye tracking with interval and rate limiting
+                            if total_detections > 0 and frame_count % self.FRAME_CAPTURE_INTERVAL == 0:
+                                if await self._should_save_detection():
+                                    try:
+                                        all_detections = [{
+                                            "class_name": highest_class,
+                                            "coords": coords
+                                        }]
+                                        await self._save_detection_image(frame, self.active_model, all_detections)
+                                    except Exception as e:
+                                        print(f"Error saving eye detection: {str(e)}")
                             
                             # Hitung FPS
                             current_time = time.time()
@@ -868,6 +891,18 @@ class CameraState(ThresholdState):
                                 duration_threshold=5.0,
                                 is_video=True
                             )
+                            
+                            # Add automatic capture for eye tracking with interval and rate limiting
+                            if total_detections > 0 and frame_count % self.FRAME_CAPTURE_INTERVAL == 0:
+                                if await self._should_save_detection():
+                                    try:
+                                        all_detections = [{
+                                            "class_name": highest_class,
+                                            "coords": coords
+                                        }]
+                                        await self._save_detection_image(frame, self.active_model, all_detections)
+                                    except Exception as e:
+                                        print(f"Error saving eye detection: {str(e)}")                            
                             
                             # Hitung FPS
                             current_time = time.time()

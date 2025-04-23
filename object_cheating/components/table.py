@@ -26,9 +26,12 @@ def create_data_row(data: Dict[str, str]):
                 color_scheme=rx.match(
                     data["behaviour"],
                     ("cheating", "tomato"),
+                    ("left", "orange"),
+                    ("right", "orange"),
                     ("Look Around", "violet"),
                     ("Normal", "grass"),
                     ("normal", "grass"),
+                    ("center", "green"),
                     ("Bend Over The Desk", "cyan"),
                     ("Hand Under Table", "indigo"),
                     ("Stand Up", "sky"),
