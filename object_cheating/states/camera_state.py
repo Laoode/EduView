@@ -161,7 +161,7 @@ class CameraState(ThresholdState):
     def get_yolo_model(cls):
         """Get or initialize YOLO model"""
         if cls._yolo_model is None:
-            cls._yolo_model = YOLO("object_cheating/models/modelv8.pt")
+            cls._yolo_model = YOLO("object_cheating/models/modelv11.pt")
         return cls._yolo_model
     
     @classmethod
