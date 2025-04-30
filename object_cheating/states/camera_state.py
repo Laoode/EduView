@@ -223,6 +223,11 @@ class CameraState(ThresholdState):
             _, buffer = cv2.imencode('.jpg', frame)
             self._original_frame_bytes = buffer.tobytes()
             
+    @rx.event
+    def set_selected_target(self, target: str):
+        """Set the selected target class."""
+        self.selected_target = target
+            
     def _apply_yolo_prediction(self, model, frame, is_model_1=True):
         """Helper method to apply YOLO prediction with current thresholds"""
         start_time = time.time()
@@ -240,6 +245,7 @@ class CameraState(ThresholdState):
         highest_class = "N/A"
         coords = {"xmin": 0, "ymin": 0, "xmax": 0, "ymax": 0}
         all_detections = []
+        selected_target = self.selected_target
         # First pass: Count all detections and draw boxes
         for result in results:
             boxes = result.boxes
@@ -248,6 +254,11 @@ class CameraState(ThresholdState):
                 conf = float(box.conf[0])
                 cls = box.cls[0]
                 class_name = model.names[int(cls)]
+                
+                # Filter detections based on selected target
+                if selected_target != "All" and class_name != selected_target:
+                    continue
+                
                 total_detections += 1
                 
                 # Simpan setiap deteksi
@@ -491,7 +502,8 @@ class CameraState(ThresholdState):
                             cnn_threshold=self.confidence_threshold,  # Use threshold from settings
                             movement_threshold=self.iou_threshold,    # Use as eye movement threshold
                             duration_threshold=5.0,
-                            is_video=False  # Specify image mode
+                            is_video=False,
+                            selected_target=self.selected_target
                         )
                         
                         # Add automatic capture for eye tracking
@@ -676,7 +688,8 @@ class CameraState(ThresholdState):
                                 cnn_threshold=self.confidence_threshold,
                                 movement_threshold=self.iou_threshold,
                                 duration_threshold=5.0,
-                                is_video=True
+                                is_video=True,
+                                selected_target=self.selected_target
                             )
                             
                             # Add automatic capture for eye tracking with interval and rate limiting
@@ -889,7 +902,8 @@ class CameraState(ThresholdState):
                                 cnn_threshold=self.confidence_threshold,
                                 movement_threshold=self.iou_threshold,
                                 duration_threshold=5.0,
-                                is_video=True
+                                is_video=True,
+                                selected_target=self.selected_target
                             )
                             
                             # Add automatic capture for eye tracking with interval and rate limiting

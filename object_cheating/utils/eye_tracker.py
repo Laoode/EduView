@@ -38,7 +38,7 @@ class EyeTracker:
 
     def process_frame(self, frame, alert_counter, frame_counter, 
                      cnn_threshold=0.6, movement_threshold=0.3, duration_threshold=5.0,
-                     is_video=False):
+                     is_video=False, selected_target="All"):
         alerts = []
         current_time = time.time()
         processed_frame = frame.copy()
@@ -82,79 +82,97 @@ class EyeTracker:
                     
                     direction_duration = current_time - self.direction_start_time
                     
-                    # Process alerts based on mode
-                    if is_video:
-                        if current_direction == "side":
-                            if direction_duration > duration_threshold * 2:
-                                self.alert_level = 2
-                                alerts.append("CHEATING: Prolonged side viewing")
-                            elif direction_duration > duration_threshold:
-                                self.alert_level = 1
-                                alerts.append("WARNING: Suspicious movement")
+                    # Process alerts based on selected_target
+                    # Check if the selected target matches either eye direction
+                    target_matched = False
+                    if selected_target == "All":
+                        target_matched = True
+                    elif selected_target == "center":
+                        target_matched = (left_direction == "center" and left_conf > cnn_threshold) or \
+                                        (right_direction == "center" and right_conf > cnn_threshold)
+                    elif selected_target == "left":
+                        target_matched = (left_direction == "left" and left_conf > cnn_threshold) or \
+                                        (right_direction == "left" and right_conf > cnn_threshold)
+                    elif selected_target == "right":
+                        target_matched = (left_direction == "right" and left_conf > cnn_threshold) or \
+                                        (right_direction == "right" and right_conf > cnn_threshold)
+
+                    if target_matched:
+                        if is_video:
+                            if current_direction == "side":
+                                if direction_duration > duration_threshold * 2:
+                                    self.alert_level = 2
+                                    alerts.append("CHEATING: Prolonged side viewing")
+                                elif direction_duration > duration_threshold:
+                                    self.alert_level = 1
+                                    alerts.append("WARNING: Suspicious movement")
+                            else:
+                                if direction_duration > 1.0:
+                                    self.alert_level = 0
                         else:
-                            if direction_duration > 1.0:
+                            if current_direction == "side":
+                                self.alert_level = 2
+                                alerts.append("Side-looking detected")
+                            else:
                                 self.alert_level = 0
                     else:
-                        if current_direction == "side":
-                            self.alert_level = 2
-                            alerts.append("Side-looking detected")
-                        else:
-                            self.alert_level = 0
+                        # Reset alert level if the selected target doesn't match
+                        self.alert_level = 0
                 
-                # Draw annotations
+                # Draw eye boxes and labels
+                h, w = frame.shape[:2]
                 color = [(0, 252, 124),  # Lawn green for normal
                         (0, 165, 255),  # Orange for suspicious
                         (71, 99, 255)][self.alert_level]  # Tomato for cheating
                 closed_color = (128, 128, 128)  # Gray for closed eyes
                 
-                # Draw eye boxes and labels
-                h, w = frame.shape[:2]
-                
                 # Draw left eye
                 left_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
                                     for i in [33, 133, 159, 145]], dtype=np.int32)
                 left_rect = cv2.boundingRect(left_points)
-                if left_direction == "closed":
-                    # Draw bounding box for closed eye with gray color
-                    cv2.rectangle(processed_frame, 
-                                (left_rect[0], left_rect[1]), 
-                                (left_rect[0] + left_rect[2], left_rect[1] + left_rect[3]), 
-                                closed_color, 2)
-                    cv2.putText(processed_frame, "closed", 
-                               (left_rect[0], left_rect[1] - 10),
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, closed_color, 2)
-                elif left_conf > cnn_threshold:
-                    # Draw bounding box for open eye with gaze direction
-                    cv2.rectangle(processed_frame, 
-                                (left_rect[0], left_rect[1]), 
-                                (left_rect[0] + left_rect[2], left_rect[1] + left_rect[3]), 
-                                color, 2)
-                    cv2.putText(processed_frame, left_direction, 
-                               (left_rect[0], left_rect[1] - 10),
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                if selected_target == "All" or left_direction == selected_target:
+                    if left_direction == "closed":
+                        # Draw bounding box for closed eye with gray color
+                        cv2.rectangle(processed_frame, 
+                                    (left_rect[0], left_rect[1]), 
+                                    (left_rect[0] + left_rect[2], left_rect[1] + left_rect[3]), 
+                                    closed_color, 2)
+                        cv2.putText(processed_frame, "closed", 
+                                (left_rect[0], left_rect[1] - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, closed_color, 2)
+                    elif left_conf > cnn_threshold:
+                        # Draw bounding box for open eye with gaze direction
+                        cv2.rectangle(processed_frame, 
+                                    (left_rect[0], left_rect[1]), 
+                                    (left_rect[0] + left_rect[2], left_rect[1] + left_rect[3]), 
+                                    color, 2)
+                        cv2.putText(processed_frame, left_direction, 
+                                (left_rect[0], left_rect[1] - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                 
                 # Draw right eye
                 right_points = np.array([[int(landmarks[i].x * w), int(landmarks[i].y * h)] 
                                      for i in [362, 263, 386, 374]], dtype=np.int32)
                 right_rect = cv2.boundingRect(right_points)
-                if right_direction == "closed":
-                    # Draw bounding box for closed eye with gray color
-                    cv2.rectangle(processed_frame, 
-                                (right_rect[0], right_rect[1]), 
-                                (right_rect[0] + right_rect[2], right_rect[1] + right_rect[3]), 
-                                closed_color, 2)
-                    cv2.putText(processed_frame, "closed", 
-                               (right_rect[0], right_rect[1] - 10),
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, closed_color, 2)
-                elif right_conf > cnn_threshold:
-                    # Draw bounding box for open eye with gaze direction
-                    cv2.rectangle(processed_frame, 
-                                (right_rect[0], right_rect[1]), 
-                                (right_rect[0] + right_rect[2], right_rect[1] + right_rect[3]), 
-                                color, 2)
-                    cv2.putText(processed_frame, right_direction, 
-                               (right_rect[0], right_rect[1] - 10),
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                if selected_target == "All" or right_direction == selected_target:
+                    if right_direction == "closed":
+                        # Draw bounding box for closed eye with gray color
+                        cv2.rectangle(processed_frame, 
+                                    (right_rect[0], right_rect[1]), 
+                                    (right_rect[0] + right_rect[2], right_rect[1] + right_rect[3]), 
+                                    closed_color, 2)
+                        cv2.putText(processed_frame, "closed", 
+                                (right_rect[0], right_rect[1] - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, closed_color, 2)
+                    elif right_conf > cnn_threshold:
+                        # Draw bounding box for open eye with gaze direction
+                        cv2.rectangle(processed_frame, 
+                                    (right_rect[0], right_rect[1]), 
+                                    (right_rect[0] + right_rect[2], right_rect[1] + right_rect[3]), 
+                                    color, 2)
+                        cv2.putText(processed_frame, right_direction, 
+                                (right_rect[0], right_rect[1] - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                 
                 # Add alert status to top-right
                 status_text = (
@@ -229,7 +247,7 @@ class EyeTracker:
 
     def process_eye_detections(self, frame, alert_counter, frame_counter, 
                               cnn_threshold=0.6, movement_threshold=0.3, 
-                              duration_threshold=5.0, is_video=False):
+                              duration_threshold=5.0, is_video=False, selected_target="All"):
         """
         Process eye tracking detections and return processed frame, alerts, total detections, and process time.
         
@@ -257,9 +275,15 @@ class EyeTracker:
                 cnn_threshold=cnn_threshold,
                 movement_threshold=movement_threshold,
                 duration_threshold=duration_threshold,
-                is_video=is_video
+                is_video=is_video,
+                selected_target=selected_target
             )
-
+            if selected_target != "All":
+                if left_direction != selected_target:
+                    left_conf = 0.0  # Ignore left eye if it doesn't match the target
+                if right_direction != selected_target:
+                    right_conf = 0.0  # Ignore right eye if it doesn't match the target
+                    
             if left_conf > cnn_threshold and left_direction != "closed":
                 total_detections += 1
             if right_conf > cnn_threshold and right_direction != "closed":
