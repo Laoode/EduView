@@ -53,7 +53,7 @@ def threshold() -> rx.Component:
                 justify="between",
                 align="center",
             ),
-            # Second Threshold Section (IoU/Eye Movement)
+            # Second Threshold Section (IoU for Model 1 & 2, Duration for Model 3)
             rx.hstack(
                 rx.text(
                     rx.cond(
@@ -66,22 +66,26 @@ def threshold() -> rx.Component:
                 rx.spacer(),
                 rx.hstack(
                     rx.input(
-                        value=ThresholdState.duration_threshold,
+                        value=rx.cond(
+                            CameraState.active_model == 3,
+                            ThresholdState.duration_threshold,
+                            ThresholdState.iou_threshold
+                        ),
                         type="number",
-                        min=0,
-                        max=1,
-                        step=0.01,
+                        min=rx.cond(CameraState.active_model == 3, 1, 0),  # Min: 1 for duration, 0 for IoU
+                        max=rx.cond(CameraState.active_model == 3, 10, 1),  # Max: 10 for duration, 1 for IoU
+                        step=rx.cond(CameraState.active_model == 3, 0.1, 0.01),  # Step: 0.1 for duration, 0.01 for IoU
                         width="70px",
                         height="36px",
                         text_align="center",
                         border="1px solid #e2e8f0",
                         border_radius="md",
-                        on_change=lambda value: ThresholdState.set_duration_from_str(value)
+                        on_change=lambda value: ThresholdState.set_second_threshold_from_str(value, CameraState.active_model),
                     ),
                     rx.vstack( 
                         rx.icon_button(
                             rx.icon("chevron-up", size=15),
-                            on_click=ThresholdState.increment_duration,
+                            on_click=lambda: ThresholdState.increment_second_threshold(CameraState.active_model),
                             border="1px solid #e2e8f0",
                             border_radius="md",
                             height="18px",
@@ -91,7 +95,7 @@ def threshold() -> rx.Component:
                         ),
                         rx.icon_button(
                             rx.icon("chevron-down", size=15),
-                            on_click=ThresholdState.decrement_duration,
+                            on_click=lambda: ThresholdState.decrement_second_threshold(CameraState.active_model),
                             border="1px solid #e2e8f0",
                             border_radius="md",
                             height="18px",
@@ -111,5 +115,4 @@ def threshold() -> rx.Component:
             class_name="bg-[#ffec99] p-4 rounded-lg shadow-md w-full"
         ),
         width="100%",
-        # display=rx.cond(CameraState.detection_enabled, "block", "none"),  # Fixed this line
     )
