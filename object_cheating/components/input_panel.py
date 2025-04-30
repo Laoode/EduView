@@ -99,7 +99,15 @@ def input_panel() -> rx.Component:
                     ),
                     disabled=CameraState.camera_active | media_active
                 ),
-                rx.button("💾 Save", class_name=button_style),
+                rx.button("💾 Save", 
+                          on_click=CameraState.save_current_frame, 
+                          class_name=rx.cond(
+                            CameraState.current_frame != "",
+                            f"{button_style} hover:bg-[#ff922b]",
+                            disabled_style
+                          ),
+                          disabled=CameraState.current_frame == ""
+                ),
                 class_name="grid grid-cols-2 gap-4 w-full mt-4"
             ),
             # Third row (Clear, centered)

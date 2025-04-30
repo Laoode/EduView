@@ -226,6 +226,32 @@ class CameraState(ThresholdState):
             self._original_frame_bytes = buffer.tobytes()
             
     @rx.event
+    async def save_current_frame(self):
+        """Save the current frame as an image."""
+        try:
+            if not self.current_frame:
+                self.error_message = "No frame to save."
+                return
+
+            header, encoded = self.current_frame.split(",", 1)
+            image_data = base64.b64decode(encoded)
+
+            save_dir = os.path.join("saved_frames", datetime.now().strftime("%Y-%m-%d"))
+            os.makedirs(save_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%H-%M-%S")
+            filename = f"{timestamp}.jpg"
+            filepath = os.path.join(save_dir, filename)
+            with open(filepath, "wb") as f:
+                f.write(image_data)
+                
+            return rx.toast.success(
+                f"Frame saved to {filepath}.", position="bottom-right"
+            )
+
+        except Exception as e:
+            self.error_message = f"Error saving frame: {str(e)}"
+            
+    @rx.event
     def set_selected_target(self, target: str):
         """Set the selected target class."""
         self.selected_target = target
