@@ -37,7 +37,7 @@ class EyeTracker:
         return vision.FaceLandmarker.create_from_options(options)
 
     def process_frame(self, frame, alert_counter, frame_counter, 
-                     cnn_threshold=0.6, movement_threshold=0.3, duration_threshold=5.0,
+                     cnn_threshold=0.6, duration_threshold=5.0,
                      is_video=False, selected_target="All"):
         alerts = []
         current_time = time.time()
@@ -246,7 +246,7 @@ class EyeTracker:
             return "closed", 0.0
 
     def process_eye_detections(self, frame, alert_counter, frame_counter, 
-                              cnn_threshold=0.6, movement_threshold=0.3, 
+                              cnn_threshold=0.6, 
                               duration_threshold=5.0, is_video=False, selected_target="All"):
         """
         Process eye tracking detections and return processed frame, alerts, total detections, and process time.
@@ -256,7 +256,6 @@ class EyeTracker:
             alert_counter: Counter for alerts
             frame_counter: Counter for frames
             cnn_threshold: Confidence threshold for eye direction detection
-            movement_threshold: Movement threshold for eye tracking
             duration_threshold: Duration threshold for alerts
             is_video: Boolean indicating if the input is a video
             
@@ -273,7 +272,6 @@ class EyeTracker:
                 alert_counter,
                 frame_counter,
                 cnn_threshold=cnn_threshold,
-                movement_threshold=movement_threshold,
                 duration_threshold=duration_threshold,
                 is_video=is_video,
                 selected_target=selected_target

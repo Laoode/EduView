@@ -502,8 +502,7 @@ class CameraState(ThresholdState):
                             0,
                             0,
                             cnn_threshold=self.confidence_threshold,  # Use threshold from settings
-                            movement_threshold=self.iou_threshold,    # Use as eye movement threshold
-                            duration_threshold=5.0,
+                            duration_threshold=self.duration_threshold, 
                             is_video=False,
                             selected_target=self.selected_target
                         )
@@ -688,8 +687,7 @@ class CameraState(ThresholdState):
                                 local_eye_alert_counter,
                                 local_eye_frame_counter,
                                 cnn_threshold=self.confidence_threshold,
-                                movement_threshold=self.iou_threshold,
-                                duration_threshold=5.0,
+                                duration_threshold=self.duration_threshold,
                                 is_video=True,
                                 selected_target=self.selected_target
                             )
@@ -905,8 +903,7 @@ class CameraState(ThresholdState):
                                 local_eye_alert_counter,
                                 local_eye_frame_counter,
                                 cnn_threshold=self.confidence_threshold,
-                                movement_threshold=self.iou_threshold,
-                                duration_threshold=5.0,
+                                duration_threshold=self.duration_threshold,
                                 is_video=True,
                                 selected_target=self.selected_target
                             )

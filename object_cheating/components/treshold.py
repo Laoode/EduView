@@ -58,7 +58,7 @@ def threshold() -> rx.Component:
                 rx.text(
                     rx.cond(
                         CameraState.active_model == 3,
-                        "Eye Movement Threshold:",
+                        "Duration Threshold (s):",
                         "IoU Threshold:"
                     ),
                     class_name="font-medium text-gray-700"
@@ -66,7 +66,7 @@ def threshold() -> rx.Component:
                 rx.spacer(),
                 rx.hstack(
                     rx.input(
-                        value=ThresholdState.iou_threshold,
+                        value=ThresholdState.duration_threshold,
                         type="number",
                         min=0,
                         max=1,
@@ -76,12 +76,12 @@ def threshold() -> rx.Component:
                         text_align="center",
                         border="1px solid #e2e8f0",
                         border_radius="md",
-                        on_change=ThresholdState.set_iou_from_str,
+                        on_change=lambda value: ThresholdState.set_duration_from_str(value)
                     ),
                     rx.vstack( 
                         rx.icon_button(
                             rx.icon("chevron-up", size=15),
-                            on_click=ThresholdState.increment_iou,
+                            on_click=ThresholdState.increment_duration,
                             border="1px solid #e2e8f0",
                             border_radius="md",
                             height="18px",
@@ -91,7 +91,7 @@ def threshold() -> rx.Component:
                         ),
                         rx.icon_button(
                             rx.icon("chevron-down", size=15),
-                            on_click=ThresholdState.decrement_iou,
+                            on_click=ThresholdState.decrement_duration,
                             border="1px solid #e2e8f0",
                             border_radius="md",
                             height="18px",
