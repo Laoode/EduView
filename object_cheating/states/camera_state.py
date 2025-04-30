@@ -89,6 +89,8 @@ class CameraState(ThresholdState):
                 self.next_model()
             else:
                 self.prev_model()
+                
+            self.selected_target = "All"
             # Set default thresholds for new model
             self.set_model_defaults(target)  # Removed await, calling directly
                 
@@ -778,7 +780,10 @@ class CameraState(ThresholdState):
         self.detection_count = 0
         self.processing_time = 0.0
         self.fps = 0.0
-
+        
+        self.table_data: List[Dict[str, str]] = []
+        self.table_entry_counter: int = 0
+         
     @rx.event
     def toggle_face_detection(self):
         self.face_detection_active = not self.face_detection_active
@@ -968,3 +973,4 @@ class CameraState(ThresholdState):
             async with self:
                 self.processing_active = False
                 self.detection_results = []
+                self.current_frame = ""
