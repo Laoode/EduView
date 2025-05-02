@@ -79,7 +79,7 @@ def behavior_panel() -> rx.Component:
                     "text-[#9ACD32]",  # yellow green
                     rx.cond(
                         CameraState.highest_confidence >= 60,
-                        "text-[#FFFF00]",  # yellow
+                        "text-[#EBC40E]",  # yellow
                         rx.cond(
                             CameraState.highest_confidence >= 50,
                             "text-[#FFD700]",  # gold
