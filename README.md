@@ -280,7 +280,7 @@ https://github.com/user-attachments/assets/b495fa4c-ea29-4932-aec8-5279749e8bca
 |-------------------------------|------------------------------------------------------------------------------|
 | Missing models                | Run the application once to download models automatically                   |
 | Camera not detected           | Check camera permissions and connections                                    |
-| Dependencies installation errors | Ensure you're using Python 3.8+ and try installing dependencies one by one |
+| Dependencies installation errors | Ensure you're using Python 3.10+ and try installing dependencies one by one |
 | `"ModuleNotFoundError"`       | Verify virtual environment is activated and all requirements are installed  |
 | Detection directory missing   | The application will create it on first use, or create it manually          |
 
