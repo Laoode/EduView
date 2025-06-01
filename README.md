@@ -134,7 +134,7 @@ Before installing EduView, ensure your system meets the following requirements:
 - GPU with CUDA support (recommended for faster model inference)
 - Webcam for live proctoring (optional if only analyzing uploaded videos)
 #### Software Requirements
-- Python 3.8 or newer
+- Python 3.10 or newer
 - Git (for cloning the repository)
 - pip (Python package manager)
 - Compatible operating system: Windows 10/11, macOS, or Linux
