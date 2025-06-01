@@ -14,6 +14,7 @@
 6. [Core Components](#core-components)
 7. [Summary](#summary)
 8. [Installation and Setup](#installation-and-setup)
+9. [Going Further](#going-further)
 
 ## Overview
 EduView is a smart online proctoring assistant designed to detect potential cheating behaviors during online & offline (hybrid) examinations. The system leverages computer vision, deep learning models, and eye tracking techniques to analyze video feeds from webcams or uploaded media, identifying suspicious activities to assist proctors.
