@@ -253,6 +253,17 @@ After successful installation and setup, you can proceed to:
 
 ---
 
+## Going Further
+This project was a great step into learning how to process video feeds from scratch, analyze them, and feed the data into detection models using EduView. It showed a cool real-world use of computer vision and deep learning, especially for proctoring exams. If you followed along easily or even with some effort, awesome job! Next up, I’m planning to take this further with some exciting ideas:
+
+1. Temporal Behavior Analysis with LSTM: I want to add a system that tracks student behavior over time using LSTM (Long Short-Term Memory) networks. This will help detect patterns, like repeated suspicious movements, to make cheating detection even smarter.
+2. Object Detection Around Students: I’ll improve the object detection to spot things like books, phones, or even people nearby more accurately. This will catch more cheating attempts, especially in online exams.
+3. Enhancing Model 3 for Open Mouth/Sound Analysis: I’m thinking of upgrading Model 3 to analyze if a student’s mouth is open or if they’re making sounds (like asking for help from someone nearby). This could flag verbal cheating, making the system more complete.
+
+If you find this project helpful, please star the repo and follow me to stay updated on these next steps and future projects!
+
+---
+
 ## 🤝 Contributing
 
 Suggestions, improvements, and contributions are welcome.  
