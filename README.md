@@ -1,4 +1,4 @@
-<h1 align="center"><a href="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=Chakra+Petch&weight=500&size=29&duration=1&pause=1000&color=000000&background=fcf06a&vCenter=true&repeat=false&width=941&lines=EduView+Smart+Online+Proctoring+Assist+for+Hybrid+Cheating+Detection" alt="Typing SVG" /></a></h1>
+<h1 align="center"><img src="https://readme-typing-svg.demolab.com?font=Chakra+Petch&weight=500&size=29&duration=1&pause=1000&color=000000&background=fcf06a&vCenter=true&repeat=false&width=941&lines=EduView+Smart+Online+Proctoring+Assist+for+Hybrid+Cheating+Detection" alt="Typing SVG" /></h1>
 
 <div align="center">
   <img src="https://github.com/Laoode/EduView/blob/main/images/cyberpunk-object.gif" alt="Banner">
