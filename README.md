@@ -225,7 +225,7 @@ Select the appropriate model from the Controls Panel based on your proctoring ne
 https://github.com/user-attachments/assets/b495fa4c-ea29-4932-aec8-5279749e8bca
 
 > [!TIP]
-> The video above demonstrates a trial run using the EduView application. Please note that the playback speed has been increased by **6.6×** and the quality has been reduced to comply with GitHub’s upload size limitations.
+> The video above demonstrates a trial run the EduView app. Please note that the playback speed has been increased by **6.6×** and the quality has been reduced to comply with GitHub’s upload size limitations.
 > For a clearer and full-resolution version, you can watch it on my **LinkedIn** profile. Alternatively, you may reduce the playback speed on GitHub to **0.25× or 0.5×** for a more natural viewing experience.
 
 ### Troubleshooting
