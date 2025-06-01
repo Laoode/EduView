@@ -4,6 +4,51 @@
   <img src="https://github.com/Laoode/EduView/blob/main/images/cyberpunk-object.gif" alt="Banner">
 </div>
 
+<div align="center">
+  <p><img src="https://readme-typing-svg.demolab.com?font=Chakra+Petch&pause=1000&color=fcf06a&center=true&random=false&width=435&lines=Let's+Improve+Exam+Integrity+Together;Ensuring+Fairness+in+Exams+with+AI;Fighting+Cheating+in+Exams+with+AI" alt="Typing SVG" /></p>
+  <p>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/last%20commit-today-blue" alt="Last Commit" />
+    </span>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/python-99.8%25-blue" alt="Python" />
+    </span>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/languages-2-grey" alt="Languages" />
+    </span>
+  </p>
+  <p>Built with the tools and technologies:</p>
+  <p>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/Markdown-white?logo=markdown" alt="Markdown" />
+    </span>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/TensorFlow-orange?logo=tensorflow" alt="TensorFlow" />
+    </span>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/Task-green?logo=task" alt="Task" />
+    </span>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/MediaPipe-teal?logo=mediapipe" alt="MediaPipe" />
+    </span>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/NumPy-blue?logo=numpy" alt="NumPy" />
+    </span>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/Python-lightblue?logo=python" alt="Python" />
+    </span>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/Reflex-purple?logo=reflex" alt="Reflex" />
+    </span>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/OpenCV-red?logo=opencv" alt="OpenCV" />
+    </span>
+    <span style="margin: 0 5px;">
+      <img src="https://img.shields.io/badge/Ultralytics-yellow?logo=ultralytics" alt="Ultralytics" />
+    </span>
+  </p>
+</div>
+
 # Table of Contents
 
 1. [Overview](#overview)
