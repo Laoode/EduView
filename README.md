@@ -77,6 +77,7 @@ Here’s some data to show how big this problem is. Between 2002 and 2015, Dr. D
 <div align="center">
   <img src="https://resources.finalsite.net/images/f_auto,q_auto,t_image_size_2/v1649248807/qsiorg/zld4driimawjquc1fj67/HighSchoolStudentsCheating.png" alt="Dr. Donald McCabe and the International Center for Academic Inquiry">
 </div>
+<br>
 
 Now, what about online exams? The problem gets even worse. [Kennedy et al. (2000)](https://files.eric.ed.gov/fulltext/EJ1382877.pdf) found that 64% of 
 teachers and 57% of students think it’s easier to cheat online than in a face-to-face setting. And honestly, 
