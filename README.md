@@ -68,9 +68,9 @@ EduView is a smart online proctoring assistant designed to detect potential chea
 
 ## Background
 ### The Problem
-Let’s talk about a problem in education that’s been around forever: cheating during exams. I’m working on another project that combines AI and education, and this time, I’m diving into how we can tackle cheating in both online and offline exams. Education is super important—it’s the foundation of knowledge for us humans. But with the rise of powerful AI tools today, cheating has become a bigger challenge than ever.
+Let’s talk about a problem in education that’s been around forever: cheating during exams. I’m working on another project that combines AI and education, and this time, I’m diving into how we can tackle cheating in both online and offline exams. Education is super important, it’s the foundation of knowledge for us humans. But with the rise of powerful AI tools today, cheating has become a bigger challenge than ever.
 
-In recent years, especially after global emergencies like the pandemic, cheating in exam rooms (both traditional and online) has been a big issue. Back in the day, proctors had to manually watch students to catch cheaters, but now we’re starting to use technology to help. Still, it’s not enough. Students have always been super creative when it comes to cheating—think notes hidden under their shoes or formulas written on a soda bottle label! But now, with technology, cheating has gone to a whole new level. Tools like ChatGPT make it so easy for students to look up answers, and it’s making life harder for teachers to catch them.
+In recent years, especially after global emergencies like the pandemic, cheating in exam rooms (both traditional and online) has been a big issue. Back in the day, proctors had to manually watch students to catch cheaters, but now we’re starting to use technology to help. Still, it’s not enough. Students have always been super creative when it comes to cheating, think notes hidden under their shoes or formulas written on a soda bottle label! But now, with technology, cheating has gone to a whole new level. Tools like ChatGPT make it so easy for students to look up answers, and it’s making life harder for teachers to catch them.
 
 Here’s some data to show how big this problem is. Between 2002 and 2015, Dr. Donald McCabe and the International Center for Academic Inquiry surveyed over 70,000 high school students in the US. They found that 58% admitted to cheating on a test, 64% admitted to plagiarism, and a shocking 95% said they’ve cheated in some way. That’s a lot!
 
@@ -120,7 +120,7 @@ to detect and classify student behaviors. It can spot things like:
 - Suspicious behaviors: Things like bending over the desk, putting their hand under the table, looking around, standing up, or waving to someone.
 The system analyzes the video feed from a camera in the classroom and flags any suspicious 
 behaviors for the proctor to review. This way, the proctor doesn’t have to walk around the 
-room—they can just check the alerts from EduView and take action if needed. It also makes 
+room, they can just check the alerts from EduView and take action if needed. It also makes 
 students think twice about cheating because they know the AI is watching!
 ### Model 2: Head Movement (Online Exams)
 This model is another YOLO-based system, but it’s focused on head movement and detect objects around student during online exam. 
@@ -140,7 +140,6 @@ For example, if a student keeps looking to the left for more than 5 seconds
 (we can adjust this duration threshold), the system might show a “WARNING: 
 Suspicious movement” alert. If it goes on longer, it might say “CHEATING DETECTED.” 
 This makes online exams much fairer because even the sneakiest cheating attempts can be caught!
-
 
 ## System Overview
 EduView provides a comprehensive solution for online exam proctoring with the following capabilities:
@@ -372,8 +371,8 @@ After successful installation and setup, you can proceed to:
 - Begin monitoring for suspicious behaviors
 
 > [!NOTE]  
-> For more details about core components, detection models, UI components, and advanced configuration — I’m still writing the full documentation on my portfolio website.  
-> 🟢 Work in progress: [yudhyprayitno.vercel.app](https://yudhyprayitno.vercel.app/)
+> If you’d like to check out more projects I’ve built, feel free to drop by my portfolio:  
+> 🟢 Still cooking up more projects: [yudhyprayitno.vercel.app](https://yudhyprayitno.vercel.app/)
 
 ---
 
@@ -407,4 +406,4 @@ Feel free to reach out if you have any questions or feedback:
 
 [![Instagram](https://img.shields.io/badge/Instagram-%40yudhyprayitno-E4405F?logo=instagram&logoColor=white&style=flat)](https://www.instagram.com/yudhyprayitno)  
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Yudhy%20Prayitno-0077B5?logo=linkedin&logoColor=white&style=flat)](https://www.linkedin.com/in/yudhy-prayitno/)
-
+[![X](https://img.shields.io/badge/X-%40Ryuuki__X-000000?logo=x&logoColor=white&style=flat)](https://x.com/Ryuuki_X)
