@@ -52,17 +52,94 @@
 # Table of Contents
 
 1. [Overview](#overview)
-2. [System Overview](#system-overview)
-3. [System Architecture](#system-architecture)
-4. [User Interface](#user-interface)
-5. [Technology Stack](#technology-stack)
-6. [Core Components](#core-components)
-7. [Summary](#summary)
-8. [Installation and Setup](#installation-and-setup)
-9. [Going Further](#going-further)
+2. [Background](#background)
+3. [AI Features](#ai-features)
+4. [System Overview](#system-overview)
+5. [System Architecture](#system-architecture)
+6. [User Interface](#user-interface)
+7. [Technology Stack](#technology-stack)
+8. [Core Components](#core-components)
+9. [Summary](#summary)
+10. [Installation and Setup](#installation-and-setup)
+11. [Going Further](#going-further)
 
 ## Overview
 EduView is a smart online proctoring assistant designed to detect potential cheating behaviors during online & offline (hybrid) examinations. The system leverages computer vision, deep learning models, and eye tracking techniques to analyze video feeds from webcams or uploaded media, identifying suspicious activities to assist proctors.
+
+## Background
+### The Problem
+Let’s talk about a problem in education that’s been around forever: cheating during exams. I’m working on another project that combines AI and education, and this time, I’m diving into how we can tackle cheating in both online and offline exams. Education is super important—it’s the foundation of knowledge for us humans. But with the rise of powerful AI tools today, cheating has become a bigger challenge than ever.
+
+In recent years, especially after global emergencies like the pandemic, cheating in exam rooms (both traditional and online) has been a big issue. Back in the day, proctors had to manually watch students to catch cheaters, but now we’re starting to use technology to help. Still, it’s not enough. Students have always been super creative when it comes to cheating—think notes hidden under their shoes or formulas written on a soda bottle label! But now, with technology, cheating has gone to a whole new level. Tools like ChatGPT make it so easy for students to look up answers, and it’s making life harder for teachers to catch them.
+
+Here’s some data to show how big this problem is. Between 2002 and 2015, Dr. Donald McCabe and the International Center for Academic Inquiry surveyed over 70,000 high school students in the US. They found that 58% admitted to cheating on a test, 64% admitted to plagiarism, and a shocking 95% said they’ve cheated in some way. That’s a lot!
+
+<div align="center">
+  <img src="https://resources.finalsite.net/images/f_auto,q_auto,t_image_size_2/v1649248807/qsiorg/zld4driimawjquc1fj67/HighSchoolStudentsCheating.png" alt="Dr. Donald McCabe and the International Center for Academic Inquiry">
+</div>
+
+Now, what about online exams? The problem gets even worse. [Kennedy et al. (2000)](https://files.eric.ed.gov/fulltext/EJ1382877.pdf) found that 64% of 
+teachers and 57% of students think it’s easier to cheat online than in a face-to-face setting. And honestly, 
+I get why. When you’re taking an online exam, you can just open another tab on your laptop, search Google, or even ask ChatGPT for answers. 
+Some online exam platforms use tab-switching detection [like ClassMarker’s tab change detection](https://www.classmarker.com/online-testing/blog/The-Power-of-Tab-Change-Detection-in-Online-Exams) 
+or ask students to record their screens. But these solutions have limits. What if a student has 
+a second laptop? Or opens a book? Or asks someone nearby for help? Those tricks are hard to catch with just tab detection or screen recording.
+
+So, why do students cheat in the first place? [Dr. David Rettinger](https://www.umw.edu/covidcourse/presenter/david-rettinger/), a professor at the University of Mary Washington, 
+says, “They cheat just enough to maintain a self-concept as honest people. They make their behavior an exception to a 
+general rule.” Basically, students might think, “I’m not a cheater, but I’ll do it just this once.” But if we let this 
+keep happening, it’s going to hurt the quality of education. Students won’t grow their knowledge, and it’ll affect the 
+future, especially in terms of human resources. Plus, teachers and proctors can’t monitor every single student all the 
+time to see who’s cheating and who’s not. It’s just too much work!
+
+### The Solution
+Here’s the big idea: we need a system that can monitor students during exams both online and offline and help teachers 
+spot cheating without having to walk around the classroom or stare at every screen. Imagine if we could use AI to 
+automatically detect cheating behaviors and flag them for the proctor to review. That way, teachers can focus 
+on running the exam instead of playing detective.
+
+For offline exams, we can use a camera to monitor students in the classroom and categorize their behaviors. 
+For example, are they looking around too much? Are they bending over their desk in a suspicious way? For online 
+exams, we need to track things like head movements, eye movements, and even objects around the student (like a phone or a book). 
+If a student is looking away from their screen too often or has something suspicious nearby, the system should notice and alert 
+the teacher.
+
+This is where my project, EduView, comes in. EduView is a smart online proctoring assistant designed to detect potential 
+cheating behaviors during exams. It uses AI, computer vision, and deep learning to analyze video feeds from webcams or 
+uploaded media, helping proctors catch suspicious activities easily.
+
+## AI Features
+Now that you know the problem and the big idea behind EduView, let’s dive into the AI features 
+we built to make this system work. EduView has three main models, each designed to tackle cheating 
+in a different way. Here’s what they do:
+### Model 1: Classroom Behavior Detection (Offline Exams)
+This model is for offline exams in a classroom setting. We use the YOLO object detection model 
+to detect and classify student behaviors. It can spot things like:
+- Normal behavior: A student sitting and focusing on their exam.
+- Suspicious behaviors: Things like bending over the desk, putting their hand under the table, looking around, standing up, or waving to someone.
+The system analyzes the video feed from a camera in the classroom and flags any suspicious 
+behaviors for the proctor to review. This way, the proctor doesn’t have to walk around the 
+room—they can just check the alerts from EduView and take action if needed. It also makes 
+students think twice about cheating because they know the AI is watching!
+### Model 2: Head Movement (Online Exams)
+This model is another YOLO-based system, but it’s focused on head movement and detect objects around student during online exam. 
+With this system, we can detect if student looking away from their screen too much or if there any suspicious objects 
+like books, phones, or other people nearby. This system use YOLO for object detection for head 
+movement that can tell if student behavior is normal or cheating. This helps catch the more obvious cheating 
+attempts that might be missed by a human proctor, especially in an online setting where the proctor can’t see everything.
+### Model 3: Eye Tracking for Silent Cheating (Online Exams)
+This is my favorite feature because it’s super detailed! For online exams, we built an AI system 
+that focuses on the student’s face specifically their eyes to catch silent cheating. Here’s how it works:
+- It uses a Convolutional Neural Network (CNN) in deep learning model (trained with TensorFlow) and MediaPipe to track eye movements.
+- It can tell if a student is looking to the side too often or for too long, which might mean they’re looking at a cheat sheet or asking someone nearby for help.
+- It also checks if the student’s eyes are closed for too long (maybe they’re pretending to think but actually sneaking a peek somewhere).
+
+The system flags these suspicious eye movements for the proctor to review. 
+For example, if a student keeps looking to the left for more than 5 seconds 
+(we can adjust this duration threshold), the system might show a “WARNING: 
+Suspicious movement” alert. If it goes on longer, it might say “CHEATING DETECTED.” 
+This makes online exams much fairer because even the sneakiest cheating attempts can be caught!
+
 
 ## System Overview
 EduView provides a comprehensive solution for online exam proctoring with the following capabilities:
