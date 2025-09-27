@@ -1,11 +1,11 @@
-<h1 align="center"><img src="https://readme-typing-svg.demolab.com?font=Chakra+Petch&weight=500&size=29&duration=1&pause=1000&color=000000&background=fcf06a&vCenter=true&repeat=false&width=941&lines=EduView+Smart+Online+Proctoring+Assist+for+Hybrid+Cheating+Detection" alt="Typing SVG" /></h1>
+<h1 align="center"><img src="https://readme-typing-svg.demolab.com?font=Chakra+Petch&weight=500&size=29&duration=1&pause=1000&color=000000&background=D4E687&vCenter=true&repeat=false&width=941&lines=EduView+Smart+Online+Proctoring+Assist+for+Hybrid+Cheating+Detection" alt="Typing SVG" /></h1>
 
 <div align="center">
-  <img src="https://github.com/Laoode/EduView/blob/main/images/cyberpunk-object.gif" alt="Banner">
+  <img src="https://i.pinimg.com/originals/18/e2/ad/18e2ad83b882cee8be192754e245bb9e.gif" alt="Banner">
 </div>
 
 <div align="center">
-  <p><img src="https://readme-typing-svg.demolab.com?font=Chakra+Petch&pause=1000&color=fcf06a&center=true&random=false&width=435&lines=Let's+Improve+Exam+Integrity+Together;Ensuring+Fairness+in+Exams+with+AI;Fighting+Cheating+in+Exams+with+AI" alt="Typing SVG" /></p>
+  <p><img src="https://readme-typing-svg.demolab.com?font=Chakra+Petch&pause=1000&color=D4E687&center=true&random=false&width=435&lines=Let's+Improve+Exam+Integrity+Together;Ensuring+Fairness+in+Exams+with+AI;Fighting+Cheating+in+Exams+with+AI" alt="Typing SVG" /></p>
   <p>
     <span style="margin: 0 5px;">
       <img src="https://img.shields.io/badge/last%20commit-today-blue" alt="Last Commit" />
