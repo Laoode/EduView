@@ -1,4 +1,6 @@
 reflex==0.7.1
+pydantic==2.10.6
+sqlmodel==0.0.24
 opencv-python==4.11.0.86
 tensorflow==2.18.0
 mediapipe
